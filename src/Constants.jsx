@@ -1,3 +1,3 @@
 export default{
-    DOMAIN_API: "https://web-dong-ho-be.onrender.com",
+    DOMAIN_API: "http://localhost:5000",
 }
