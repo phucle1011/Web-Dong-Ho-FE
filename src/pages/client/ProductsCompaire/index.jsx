@@ -44,7 +44,7 @@ export default function ProductsCompare() {
   const [allAttributes, setAllAttributes] = useState([]);
 
   useEffect(() => {
-    fetch("http://localhost:5000/products/compare")
+    fetch("https://web-dong-ho-be.onrender.com/products/compare")
       .then((res) => res.json())
       .then((data) => {
         const variantList = [];

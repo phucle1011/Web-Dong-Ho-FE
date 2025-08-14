@@ -28,7 +28,7 @@ const handleSubmit = async (e) => {
   }
 
   try {
-    const res = await fetch("http://localhost:5000/contact/faq", {
+    const res = await fetch("https://web-dong-ho-be.onrender.com/contact/faq", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(formData),

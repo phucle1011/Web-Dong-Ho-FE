@@ -26,7 +26,7 @@ export const uploadToCloudinary = async (file) => {
 // ✅ HÀM XÓA ẢNH
 export const deleteImageFromCloudinary = async (publicId) => {
   try {
-    const response = await fetch("http://localhost:5000/admin/products/imagesClauding", {
+    const response = await fetch("https://web-dong-ho-be.onrender.com/admin/products/imagesClauding", {
       method: "POST", // phải có method
       headers: {
         "Content-Type": "application/json",

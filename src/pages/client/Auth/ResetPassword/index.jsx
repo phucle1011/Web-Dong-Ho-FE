@@ -42,7 +42,7 @@ export default function ResetPassword() {
     setLoading(true);
     try {
       const response = await axios.post(
-        `http://localhost:5000/auth/update-password/${token}`,
+        `https://web-dong-ho-be.onrender.com/auth/update-password/${token}`,
         { password }
       );
       if (response.data.success) {

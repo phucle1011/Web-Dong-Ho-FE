@@ -105,7 +105,7 @@ export default function Contact() {
     try {
       setIsSubmitting(true);
       await axios.post(
-        "http://localhost:5000/contact",
+        "https://web-dong-ho-be.onrender.com/contact",
         {
           first_name: formData.first_name,
           subject: formData.subject,
