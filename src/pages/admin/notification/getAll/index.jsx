@@ -281,9 +281,9 @@ const NotificationList = () => {
                               </tr>
                             </thead>
                             <tbody>
-                              {Array.isArray(noti.flashSale) &&
-                              noti.flashSale.length > 0 ? (
-                                noti.flashSale.map((fs, i) => {
+                              {Array.isArray(noti.notification_promotions) &&
+                              noti.notification_promotions.length > 0 ? (
+                                noti.notification_promotions.map((fs, i) => {
                                   const promo = fs.promotion;
                                   if (!promo) return null;
 
@@ -341,7 +341,7 @@ const NotificationList = () => {
                                     colSpan="6"
                                     className="text-center p-3 italic text-gray-500"
                                   >
-                                    Không có Flash Sale nào trong slideshow này.
+                                    Không có khuyến mãi  nào trong slideshow này.
                                   </td>
                                 </tr>
                               )}

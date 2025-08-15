@@ -5,6 +5,7 @@ import useCountDown from "../Helpers/CountDown";
 import Layout from "../Partials/LayoutHomeThree";
 import axios from "axios";
 import Constants from "../../../Constants";
+import FlashCountdown  from "./FlashCountdown";
 
 export default function FlashSale() {
   const location = useLocation();
@@ -21,53 +22,53 @@ export default function FlashSale() {
   const handleShowMore = () => {
     setVisibleCount((prev) => prev + 12);
   };
-
   useEffect(() => {
-  // Vào trang là cuộn về đầu (tuỳ thích, có thể bỏ behavior nếu muốn nhảy ngay)
-  window.scrollTo({ top: 0});
+    window.scrollTo(0, 0);
+    // chạy đúng 1 lần khi mount
+  }, []);
+  useEffect(() => {
+    async function fetchProducts() {
+      if (!notification_id) return;
+      setLoading(true);
+      try {
+        const res = await axios.get(
+          `${Constants.DOMAIN_API}/client/flashSale/list/${notification_id}`
+        );
+        // Nếu API trả { data: [...] } thì lấy data, còn không thì lấy trực tiếp res.data
+        const productsFromApi = Array.isArray(res.data?.data)
+          ? res.data.data
+          : Array.isArray(res.data)
+          ? res.data
+          : [];
 
-  async function fetchProducts() {
-    if (!notification_id) return;
-    setLoading(true);
-    try {
-      const res = await axios.get(
-        `${Constants.DOMAIN_API}/client/flashSale/list/${notification_id}`
-      );
-      // Nếu API trả { data: [...] } thì lấy data, còn không thì lấy trực tiếp res.data
-      const productsFromApi = Array.isArray(res.data?.data)
-        ? res.data.data
-        : Array.isArray(res.data)
-        ? res.data
-        : [];
+        setProducts(productsFromApi);
 
-      setProducts(productsFromApi);
+        // Ưu tiên banner từ notification (nếu có), nếu không thì lấy từ sản phẩm đầu tiên
+        const fallback =
+          productsFromApi[0]?.thumbnail ||
+          productsFromApi[0]?.product?.thumbnail ||
+          productsFromApi[0]?.images?.[0]?.image_url ||
+          `${process.env.REACT_APP_PUBLIC_URL}/assets/images/flash-sale-ads.png`;
 
-      // Ưu tiên banner từ notification (nếu có), nếu không thì lấy từ sản phẩm đầu tiên
-      const fallback =
-        productsFromApi[0]?.thumbnail ||
-        productsFromApi[0]?.product?.thumbnail ||
-        productsFromApi[0]?.images?.[0]?.image_url ||
-        `${process.env.REACT_APP_PUBLIC_URL}/assets/images/flash-sale-ads.png`;
+        setBannerUrl(notification?.thumbnail || fallback);
 
-      setBannerUrl(notification?.thumbnail || fallback);
-      
-      // Gán end date nếu có
-      if (end_date) setEndDate(end_date);
-    } catch (err) {
-      console.error("Lỗi khi load sản phẩm:", err);
-      setProducts([]);
-      // Khi lỗi thì dùng banner mặc định
-      setBannerUrl(`${process.env.REACT_APP_PUBLIC_URL}/assets/images/flash-sale-ads.png`);
-    } finally {
-      setLoading(false);
+        // Gán end date nếu có
+        if (end_date) setEndDate(end_date);
+      } catch (err) {
+        console.error("Lỗi khi load sản phẩm:", err);
+        setProducts([]);
+        // Khi lỗi thì dùng banner mặc định
+        setBannerUrl(
+          `${process.env.REACT_APP_PUBLIC_URL}/assets/images/flash-sale-ads.png`
+        );
+      } finally {
+        setLoading(false);
+      }
     }
-  }
 
-  fetchProducts();
-}, [notification_id, end_date, notification]);
+    fetchProducts();
+  }, [notification_id, end_date, notification]);
 
-
-  const { showDate, showHour, showMinute, showSecound } = useCountDown(endDate);
 
   return (
     <Layout>
@@ -75,7 +76,6 @@ export default function FlashSale() {
         <div className="container-x mx-auto">
           <div className="w-full">
             <div
-              data-aos="fade-right"
               className="flash-ad w-full h-[400px] flex sm:justify-end justify-center items-center mb-10 relative overflow-hidden rounded-md"
               style={{
                 backgroundImage: bannerUrl ? `url("${bannerUrl}")` : "none",
@@ -84,22 +84,8 @@ export default function FlashSale() {
                 backgroundSize: "cover",
               }}
             >
-              <div className="sm:mr-[75px]">
-                <div className="countdown-wrapper w-full flex sm:space-x-6 space-x-3 sm:justify-between justify-evenly">
-                  <CountCircle label="Ngày" value={showDate} color="#EB5757" />
-                  <CountCircle label="Giờ" value={showHour} color="#2F80ED" />
-                  <CountCircle
-                    label="Phút"
-                    value={showMinute}
-                    color="#219653"
-                  />
-                  <CountCircle
-                    label="Giây"
-                    value={showSecound}
-                    color="#EF5DA8"
-                  />
-                </div>
-              </div>
+                <FlashCountdown endDate={endDate} />
+
             </div>
 
             <div className="products grid xl:grid-cols-4 lg:grid-cols-3 sm:grid-cols-2 grid-cols-1 xl:gap-[30px] gap-5">
@@ -109,7 +95,7 @@ export default function FlashSale() {
                 </p>
               ) : products.length > 0 ? (
                 products.slice(0, visibleCount).map((product) => (
-                  <div key={product.id} className="item" data-aos="fade-up">
+                  <div key={product.id} className="item" >
                     <ProductCardStyleOne datas={product} />
                   </div>
                 ))
