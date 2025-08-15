@@ -81,6 +81,9 @@ export default function AuctionRoom() {
         ms: 0,
     });
 
+    const bidInFlightRef = useRef(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
     useEffect(() => {
         setOverridePrice(newBidPrice);
     }, [newBidPrice]);
@@ -478,17 +481,35 @@ export default function AuctionRoom() {
             return;
         }
 
+        if (bidInFlightRef.current) return;
+        bidInFlightRef.current = true;
+        setIsSubmitting(true);
+
+        const idemKey = `${activeAuction.id}:${meId}:${bidValue}`;
+
         try {
             await axios.post(
                 `${Constants.DOMAIN_API}/auctions/${activeAuction.id}/bids`,
                 { bidAmount: bidValue },
-                { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('token')}`,
+                        'X-Idempotency-Key': idemKey,
+                    },
+                }
             );
-            // setCooldownUntil(new Date(Date.now() + 10_000));
+
             setExitLocked(true);
             setStepCount(1);
+
+            setCooldownUntil(new Date(Date.now() + 1000));
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Lỗi khi đặt giá');
+            toast.error(err?.response?.data?.message || 'Lỗi khi đặt giá');
+        } finally {
+            setTimeout(() => {
+                bidInFlightRef.current = false;
+                setIsSubmitting(false);
+            }, 1200);
         }
     };
 
@@ -1103,35 +1124,11 @@ export default function AuctionRoom() {
                                     Giá tối thiểu có thể đặt
                                 </div>
 
-                                {/* ====== Kết thúc ô nhập ====== */}
-
                                 {/* <button
-                                    type="button"
-                                    onClick={handleBid}
-                                    disabled={!activeAuction || isMyHighest || isCooldown}
-                                    className={`mt-4 w-full h-12 rounded-full font-semibold shadow
-                                    ${isCooldown || isMyHighest
-                                            ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                                            : 'bg-blue-200 hover:bg-blue-300 text-blue-900'}
-                                                `}
-                                >
-                                    {isCooldown
-                                        ? `Đang tạm khóa (${Math.ceil(cooldownLeft / 1000)}s)`
-                                        : <>Trả giá <span className="font-extrabold">{formatVnd(newBidPrice)}</span></>}
-                                </button> */}
-
-                                <button
                                     type="button"
                                     onMouseDown={(e) => {
                                         if (isInvalidBid) e.preventDefault();
                                     }}
-                                    // onClick={handleBid}
-                                    // disabled={
-                                    //     !activeAuction ||
-                                    //     isMyHighest ||
-                                    //     isCooldown ||
-                                    //     bidValue < minAllowed   /* chặn khi giá nhập < minAllowed */
-                                    // }
                                     onClick={() => {
                                         if (isInvalidBid) return;
                                         handleBid();
@@ -1145,6 +1142,28 @@ export default function AuctionRoom() {
                                     {isCooldown
                                         ? `Đang tạm khóa (${Math.ceil(cooldownLeft / 1000)}s)`
                                         : <>Trả giá <span className="font-extrabold">{formatVnd(bidValue)}</span></>
+                                    }
+                                </button> */}
+
+                                <button
+                                    type="button"
+                                    onMouseDown={(e) => { if (isInvalidBid || isSubmitting) e.preventDefault(); }}
+                                    onClick={() => {
+                                        if (isInvalidBid || isSubmitting) return;
+                                        handleBid();
+                                    }}
+                                    disabled={isInvalidBid || isSubmitting}
+                                    className={`mt-4 w-full h-12 rounded-full font-semibold shadow
+                                     ${(isCooldown || isSubmitting)
+                                                ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                                                : 'bg-blue-200 hover:bg-blue-300 text-blue-900'}
+                                    `}
+                                >
+                                    {isCooldown
+                                        ? `Đang tạm khóa (${Math.ceil(cooldownLeft / 1000)}s)`
+                                        : isSubmitting
+                                            ? 'Đang gửi...'
+                                            : <>Trả giá <span className="font-extrabold">{formatVnd(bidValue)}</span></>
                                     }
                                 </button>
 
