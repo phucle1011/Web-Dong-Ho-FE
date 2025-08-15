@@ -14,7 +14,7 @@ import {
 } from 'chart.js';
 
 import { Pie, Bar } from 'react-chartjs-2';
-
+import CountUp from 'react-countup';
 ChartJS.register(ArcElement, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
 
 function Dashboard() {
@@ -32,7 +32,8 @@ function Dashboard() {
     revenueLastYear: 0,
     total_promotion: 0,
   });
-
+  const [topLimit, setTopLimit] = useState(4);
+  const [bestSellers, setBestSellers] = useState([]);
   const [customRange, setCustomRange] = useState({ from: '', to: '' });
 
   const changePercent = counts.revenueLastMonth === 0
@@ -57,8 +58,8 @@ function Dashboard() {
   });
 
   const [orderStatus, setOrderStatus] = useState(null);
-const [promoImpact, setPromoImpact] = useState(null);
-const [topPromos, setTopPromos] = useState([]);
+  const [promoImpact, setPromoImpact] = useState(null);
+  const [topPromos, setTopPromos] = useState([]);
 
   const totalRevenueSelectedMonth = revenueData.datasets[0]?.data.reduce((sum, val) => sum + val, 0) || 0;
 
@@ -69,6 +70,23 @@ const [topPromos, setTopPromos] = useState([]);
   };
 
   const [bestSellingProduct, setBestSellingProduct] = useState(null);
+
+  useEffect(() => {
+    async function fetchTopBestSellers() {
+      try {
+        const res = await axios.get(`${Constants.DOMAIN_API}/admin/dashboard/best-sellers`, {
+          params: { limit: topLimit }
+        });
+        if (res.data.status === 200) {
+          setBestSellers(res.data.data);
+        }
+      } catch (err) {
+        console.error("Lỗi khi lấy top sản phẩm bán chạy:", err);
+      }
+    }
+
+    fetchTopBestSellers();
+  }, [topLimit]);
 
   useEffect(() => {
     async function fetchCounts() {
@@ -87,71 +105,71 @@ const [topPromos, setTopPromos] = useState([]);
   }, []);
 
   useEffect(() => {
-  const params = {};
-  if (customRange.from && customRange.to) {
-    params.from = customRange.from;
-    params.to = customRange.to;
-  }
-
-  (async () => {
-  try {
     const params = {};
     if (customRange.from && customRange.to) {
       params.from = customRange.from;
       params.to = customRange.to;
     }
 
-    const [statusRes, impactRes, topRes] = await Promise.all([
-      axios.get(`${Constants.DOMAIN_API}/admin/dashboard/order-status`),
-      axios.get(`${Constants.DOMAIN_API}/admin/dashboard/promo-impact`, { params }),
-      axios.get(`${Constants.DOMAIN_API}/admin/dashboard/top-promotions`, { params: { ...params, limit: 5 } }),
-    ]);
+    (async () => {
+      try {
+        const params = {};
+        if (customRange.from && customRange.to) {
+          params.from = customRange.from;
+          params.to = customRange.to;
+        }
 
-    setOrderStatus(statusRes.data?.data || null);
+        const [statusRes, impactRes, topRes] = await Promise.all([
+          axios.get(`${Constants.DOMAIN_API}/admin/dashboard/order-status`),
+          axios.get(`${Constants.DOMAIN_API}/admin/dashboard/promo-impact`, { params }),
+          axios.get(`${Constants.DOMAIN_API}/admin/dashboard/top-promotions`, { params: { ...params, limit: 5 } }),
+        ]);
 
-    // ---- Chuẩn hoá promoImpact ----
-    const rawImpact = impactRes.data?.data || null;
-    let normalizedImpact = null;
+        setOrderStatus(statusRes.data?.data || null);
 
-    if (rawImpact) {
-      if (rawImpact.totals && rawImpact.revenue) {
-        // API mới (có totals, revenue)
-        normalizedImpact = {
-          totalCompleted:    safeNumber(rawImpact.totals.totalCompleted),
-          ordersWithPromo:   safeNumber(rawImpact.totals.promoOrderCount),
-          ordersWithoutPromo:safeNumber(rawImpact.totals.ordersWithoutPromo),
-          redemptionRate:    safeNumber(rawImpact.totals.redemptionRate),
+        // ---- Chuẩn hoá promoImpact ----
+        const rawImpact = impactRes.data?.data || null;
+        let normalizedImpact = null;
 
-          revenueWithPromo:    safeNumber(rawImpact.revenue.withPromo),
-          revenueWithoutPromo: safeNumber(rawImpact.revenue.withoutPromo),
-          totalDiscount:       safeNumber(rawImpact.revenue.totalDiscount),
-          AOVWithPromo:        safeNumber(rawImpact.revenue.AOVWithPromo),
-          AOVWithoutPromo:     safeNumber(rawImpact.revenue.AOVWithoutPromo),
-        };
-      } else {
-        // API cũ (phẳng)
-        normalizedImpact = {
-          totalCompleted:      safeNumber(rawImpact.totalCompleted),
-          ordersWithPromo:     safeNumber(rawImpact.ordersWithPromo),
-          ordersWithoutPromo:  safeNumber(rawImpact.ordersWithoutPromo),
-          redemptionRate:      safeNumber(rawImpact.redemptionRate),
-          revenueWithPromo:    safeNumber(rawImpact.revenueWithPromo),
-          revenueWithoutPromo: safeNumber(rawImpact.revenueWithoutPromo),
-          totalDiscount:       safeNumber(rawImpact.totalDiscount),
-          AOVWithPromo:        safeNumber(rawImpact.AOVWithPromo),
-          AOVWithoutPromo:     safeNumber(rawImpact.AOVWithoutPromo),
-        };
+        if (rawImpact) {
+          if (rawImpact.totals && rawImpact.revenue) {
+            // API mới (có totals, revenue)
+            normalizedImpact = {
+              totalCompleted: safeNumber(rawImpact.totals.totalCompleted),
+              ordersWithPromo: safeNumber(rawImpact.totals.promoOrderCount),
+              ordersWithoutPromo: safeNumber(rawImpact.totals.ordersWithoutPromo),
+              redemptionRate: safeNumber(rawImpact.totals.redemptionRate),
+
+              revenueWithPromo: safeNumber(rawImpact.revenue.withPromo),
+              revenueWithoutPromo: safeNumber(rawImpact.revenue.withoutPromo),
+              totalDiscount: safeNumber(rawImpact.revenue.totalDiscount),
+              AOVWithPromo: safeNumber(rawImpact.revenue.AOVWithPromo),
+              AOVWithoutPromo: safeNumber(rawImpact.revenue.AOVWithoutPromo),
+            };
+          } else {
+            // API cũ (phẳng)
+            normalizedImpact = {
+              totalCompleted: safeNumber(rawImpact.totalCompleted),
+              ordersWithPromo: safeNumber(rawImpact.ordersWithPromo),
+              ordersWithoutPromo: safeNumber(rawImpact.ordersWithoutPromo),
+              redemptionRate: safeNumber(rawImpact.redemptionRate),
+              revenueWithPromo: safeNumber(rawImpact.revenueWithPromo),
+              revenueWithoutPromo: safeNumber(rawImpact.revenueWithoutPromo),
+              totalDiscount: safeNumber(rawImpact.totalDiscount),
+              AOVWithPromo: safeNumber(rawImpact.AOVWithPromo),
+              AOVWithoutPromo: safeNumber(rawImpact.AOVWithoutPromo),
+            };
+          }
+        }
+
+        setPromoImpact(normalizedImpact);
+        setTopPromos(topRes.data?.data || []);
+      } catch (e) {
+        console.error('Fetch extra dashboard error:', e);
       }
-    }
+    })();
 
-    setPromoImpact(normalizedImpact);
-    setTopPromos(topRes.data?.data || []);
-  } catch (e) {
-    console.error('Fetch extra dashboard error:', e);
-  }
-})();
-
-}, [customRange]);
+  }, [customRange]);
 
   useEffect(() => {
     async function fetchRevenue() {
@@ -278,70 +296,128 @@ const [topPromos, setTopPromos] = useState([]);
     { key: 'total_promotion', icon: <FaTag size={24} />, label: 'Khuyến mãi', bg: 'bg-dark' },
   ];
 
-const orderStatusLabels = ['Chờ xác nhận','Đã xác nhận','Đang giao', 'Đã giao hàng thành công', 'Hoàn thành','Đã hủy'];
-const orderStatusKeys   = ['pending','confirmed','shipping', 'delivered', 'completed','cancelled'];
+  const orderStatusLabels = ['Chờ xác nhận', 'Đã xác nhận', 'Đang giao', 'Đã giao hàng thành công', 'Hoàn thành', 'Đã hủy'];
+  const orderStatusKeys = ['pending', 'confirmed', 'shipping', 'delivered', 'completed', 'cancelled'];
 
-const orderStatusData = orderStatus ? {
-  labels: orderStatusLabels,
-  datasets: [{
-    label: 'Đơn hàng',
-    data: orderStatusKeys.map(k => orderStatus[k] || 0),
-    backgroundColor: ['#ffc107','#0d6efd','#17a2b8','#28a745','#dc3545','#6c757d'],
-    borderWidth: 1
-  }]
-} : null;
+  const orderStatusData = orderStatus ? {
+    labels: orderStatusLabels,
+    datasets: [{
+      label: 'Đơn hàng',
+      data: orderStatusKeys.map(k => orderStatus[k] || 0),
+      backgroundColor: ['#ffc107', '#0d6efd', '#17a2b8', '#28a745', '#dc3545', '#6c757d'],
+      borderWidth: 1
+    }]
+  } : null;
 
-const promoRevenueCompare = promoImpact ? {
-  labels: ['Không có','Có'],
-  datasets: [{
-    label: 'Doanh thu',
-    data: [
-      safeNumber(promoImpact.revenueWithoutPromo),
-      safeNumber(promoImpact.revenueWithPromo)
-    ],
-    backgroundColor: ['rgba(108,117,125,0.5)','rgba(40,167,69,0.5)'],
-    borderColor:     ['rgba(108,117,125,1)','rgba(40,167,69,1)'],
-    borderRadius: 6,
-    borderWidth: 1
-  }]
-} : null;
+  const promoRevenueCompare = promoImpact ? {
+    labels: ['Không có', 'Có'],
+    datasets: [{
+      label: 'Doanh thu',
+      data: [
+        safeNumber(promoImpact.revenueWithoutPromo),
+        safeNumber(promoImpact.revenueWithPromo)
+      ],
+      backgroundColor: ['rgba(108,117,125,0.5)', 'rgba(40,167,69,0.5)'],
+      borderColor: ['rgba(108,117,125,1)', 'rgba(40,167,69,1)'],
+      borderRadius: 6,
+      borderWidth: 1
+    }]
+  } : null;
 
-const barCurrencyOpts = {
-  responsive: true,
-  plugins: {
-    legend: { display: false },
-    tooltip: {
-      callbacks: { label: ctx => ` ${formatVND(ctx.parsed.y)}` }
+  const barCurrencyOpts = {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: { label: ctx => ` ${formatVND(ctx.parsed.y)}` }
+      },
+      title: { display: false }
     },
-    title: { display: false }
-  },
-  scales: {
-    y: { ticks: { callback: v => formatVND(v) } }
+    scales: {
+      y: { ticks: { callback: v => formatVND(v) } }
+    }
+  };
+
+  const topPromosChart = topPromos?.length ? {
+    labels: topPromos.map(p => `${p.name}${p.code ? ` (${p.code})` : ''}`),
+    datasets: [{
+      label: 'Số đơn dùng mã',
+      data: topPromos.map(p => p.ordersCount),
+      backgroundColor: 'rgba(13,110,253,0.5)',
+      borderColor: 'rgba(13,110,253,1)',
+      borderRadius: 6,
+      borderWidth: 1
+    }]
+  } : null;
+
+  const horizBarOpts = {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.x} đơn` } }
+    }
+  };
+
+  function PromoStatCard({ title, value, percentage = 0, pathColor = "#10b981" }) {
+    const pct = Number.isFinite(+percentage) ? Math.max(0, Math.min(100, +percentage)) : 0;
+
+    const waveFillPath = React.useMemo(() => {
+      const W = 360;
+      const H = 120;
+      const amplitude = 8;
+      const baseline = (1 - pct / 100) * (H - 20) + 10;
+      const steps = 24;
+      const dx = W / steps;
+
+      let d = `M0,${baseline}`;
+      for (let i = 0; i <= steps; i++) {
+        const x = i * dx;
+        const y = baseline + Math.sin((i / steps) * Math.PI * 2) * amplitude;
+        d += ` L${x},${y}`;
+      }
+      d += ` L${W},${H} L0,${H} Z`;
+      return d;
+    }, [pct]);
+
+    const waveStrokePath = React.useMemo(() => {
+      const W = 360;
+      const H = 120;
+      const amplitude = 8;
+      const baseline = (1 - pct / 100) * (H - 20) + 10;
+      const steps = 48;
+      const dx = W / steps;
+
+      let d = `M0,${baseline}`;
+      for (let i = 0; i <= steps; i++) {
+        const x = i * dx;
+        const y = baseline + Math.sin((i / steps) * Math.PI * 2) * amplitude;
+        d += ` L${x},${y}`;
+      }
+      return d;
+    }, [pct]);
+
+    return (
+      <div
+        className="bg-white rounded-3 shadow-sm px-4 py-3 d-flex flex-column justify-content-between"
+        style={{ position: "relative", overflow: "hidden", minHeight: 140 }}
+      >
+        <div>
+          <div className="text-muted small fw-semibold text-uppercase">{title}</div>
+          <div className="h4 mb-0">{value}</div>
+        </div>
+
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 60 }}>
+          <svg width="100%" height="100%" viewBox="0 0 360 120" preserveAspectRatio="none">
+            <path d={waveFillPath} fill={pathColor} opacity="0.15" />
+            <path d={waveStrokePath} stroke={pathColor} strokeWidth="2" fill="none" />
+          </svg>
+        </div>
+      </div>
+    );
   }
-};
 
-const topPromosChart = topPromos?.length ? {
-  labels: topPromos.map(p => `${p.name}${p.code ? ` (${p.code})` : ''}`),
-  datasets: [{
-    label: 'Số đơn dùng mã',
-    data: topPromos.map(p => p.ordersCount),
-    backgroundColor: 'rgba(13,110,253,0.5)',
-    borderColor: 'rgba(13,110,253,1)',
-    borderRadius: 6,
-    borderWidth: 1
-  }]
-} : null;
-
-const horizBarOpts = {
-  indexAxis: 'y',
-  responsive: true,
-  plugins: {
-    legend: { display: false },
-    tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.x} đơn` } }
-  }
-};
-
-const redemptionRateSafe = safeNumber(promoImpact?.redemptionRate);
+  const redemptionRateSafe = safeNumber(promoImpact?.redemptionRate);
 
   return (
     <div className="page-wrapper">
@@ -361,122 +437,60 @@ const redemptionRateSafe = safeNumber(promoImpact?.redemptionRate);
       </div>
 
       <div className="container-fluid">
-        
- <div className="row mt-4">
-  <div className="col-lg-4">
-    <div className="card h-100">
-      <div className="card-header fw-semibold text-center">Trạng thái đơn hàng</div>
-      <div className="card-body">
-        {orderStatusData ? <Pie data={orderStatusData} /> : <div className="text-muted">Không có dữ liệu</div>}
-      </div>
-    </div>
-  </div>
-
-  <div className="col-lg-4">
-    <div className="card h-100">
-      <div className="card-header fw-semibold text-center">Doanh thu: Có khuyến mãi với không có khuyến mãi</div>
-      <div className="card-body">
-        {promoRevenueCompare ? <Bar data={promoRevenueCompare} options={barCurrencyOpts} /> : <div className="text-muted">Chọn khoảng ngày để xem</div>}
-      </div>
-    </div>
-  </div>
-
-  <div className="col-lg-4">
-    <div className="card h-100">
-      <div className="card-header fw-semibold text-center">Top 5 khuyến mãi được dùng nhiều</div>
-      <div className="card-body">
-        {topPromosChart ? <Bar data={topPromosChart} options={horizBarOpts} /> : <div className="text-muted">Chưa có dữ liệu</div>}
-      </div>
-    </div>
-  </div>
-</div>
-
-{promoImpact && (
-  <div className="row g-3 mt-3">
-    <div className="col-md-3 h-30">
-      <div className="card shadow-sm">
-        <div className="card-body">
-          <div className="text-muted small mb-1">Tỉ lệ dùng khuyến mãi</div>
-         <div className="h4 mb-0">{redemptionRateSafe.toFixed(1)}% </div>
-          <div className="small text-secondary mt-1">({promoImpact.ordersWithPromo}/{promoImpact.totalCompleted} đơn hoàn thành)</div>
-        </div>
-      </div>
-    </div>
-    <div className="col-md-3">
-      <div className="card shadow-sm">
-        <div className="card-body">
-          <div className="text-muted small mb-1">Tổng giảm giá đã áp dụng</div>
-          <div className="h4 mb-0">{formatVND(safeNumber(promoImpact?.totalDiscount))}</div>
-        </div>
-      </div>
-    </div>
-    <div className="col-md-3">
-      <div className="card shadow-sm">
-        <div className="card-body">
-          <div className="text-muted small mb-1">Tổng đơn hàng có khuyến mãi</div>
-          <div className="h4 mb-0">{formatVND(safeNumber(promoImpact?.AOVWithPromo))}</div>
-        </div>
-      </div>
-    </div>
-    <div className="col-md-3">
-      <div className="card shadow-sm">
-        <div className="card-body">
-          <div className="text-muted small mb-1">Tổng đơn hàng không có khuyến mãi</div>
-         <div className="h4 mb-0">{formatVND(safeNumber(promoImpact?.AOVWithoutPromo))}</div>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
-
-
-        {/* <div className="row g-3">
-          {statsCards.map(({ key, icon, label, bg }, idx) => (
-            <div className="col-6 col-md-4 col-lg-2" key={idx}>
-              <div className="card border-0 shadow-sm rounded-2">
-                <div
-                  className={`text-white text-center ${bg} rounded-2 py-3`}
-                  title={label}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.classList.add('shadow');
-                    e.currentTarget.style.transform = 'translateY(-4px)';
-                    e.currentTarget.style.opacity = '0.9';
-                    e.currentTarget.style.transition = 'all 0.2s ease';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.classList.remove('shadow');
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.opacity = '1';
-                  }}
-                >
-                  <div className="d-flex justify-content-center align-items-center gap-2 mb-2">
-                    <span className="fs-4">{counts[key]}</span>
-                    <span>{icon}</span>
-                  </div>
-                  <div className="text-uppercase fw-semibold small">{label}</div>
-                </div>
-              </div>
+        {promoImpact && (
+          <div className="row g-3 mt-3 mb-5">
+            <div className="col-md-3">
+              <PromoStatCard
+                title="Tỉ lệ dùng khuyến mãi"
+                value={`${redemptionRateSafe.toFixed(1)}%`}
+                percentage={
+                  promoImpact.totalCompleted === 0
+                    ? 0
+                    : ((promoImpact.ordersWithPromo - promoImpact.ordersWithoutPromo) / promoImpact.totalCompleted) * 100
+                }
+                isUp={promoImpact.ordersWithPromo >= promoImpact.ordersWithoutPromo}
+                pathColor="#0ea5e9"
+              />
             </div>
-          ))}
-        </div> */}
-
-
-        {/* {bestSellingProduct ? (
-  <div className="d-flex align-items-center justify-content-between">
-    <div>
-      <h5 className="fw-bold">{bestSellingProduct.variant?.name}</h5>
-      <p className="mb-1">SKU: {bestSellingProduct.variant?.sku}</p>
-      <p className="mb-1">Thuộc sản phẩm: {bestSellingProduct.variant?.product?.name}</p>
-      <p className="mb-1">Giá: {formatVND(bestSellingProduct.variant?.price)}</p>
-      <p className="mb-0">Đã bán: {bestSellingProduct.totalSold} lần</p>
-    </div>
-    <div className="text-end">
-      <span className="badge bg-success fs-5">Bán chạy</span>
-    </div>
-  </div>
-) : (
-  <p>Không có dữ liệu sản phẩm bán chạy.</p>
-)} */}
+            <div className="col-md-3">
+              <PromoStatCard
+                title="Tổng giảm giá đã áp dụng"
+                value={formatVND(promoImpact.totalDiscount)}
+                percentage={
+                  (promoImpact.totalDiscount / (promoImpact.revenueWithPromo + promoImpact.totalDiscount)) * 100
+                }
+                isUp={true}
+                pathColor="#10b981"
+              />
+            </div>
+            <div className="col-md-3">
+              <PromoStatCard
+                title="AOV có khuyến mãi"
+                value={formatVND(promoImpact.AOVWithPromo)}
+                percentage={
+                  promoImpact.AOVWithoutPromo === 0
+                    ? 0
+                    : ((promoImpact.AOVWithPromo - promoImpact.AOVWithoutPromo) / promoImpact.AOVWithoutPromo) * 100
+                }
+                isUp={promoImpact.AOVWithPromo >= promoImpact.AOVWithoutPromo}
+                pathColor="#f59e0b"
+              />
+            </div>
+            <div className="col-md-3">
+              <PromoStatCard
+                title="AOV không khuyến mãi"
+                value={formatVND(promoImpact.AOVWithoutPromo)}
+                percentage={
+                  promoImpact.AOVWithPromo === 0
+                    ? 0
+                    : ((promoImpact.AOVWithoutPromo - promoImpact.AOVWithPromo) / promoImpact.AOVWithPromo) * 100
+                }
+                isUp={promoImpact.AOVWithoutPromo >= promoImpact.AOVWithPromo}
+                pathColor="#ef4444"
+              />
+            </div>
+          </div>
+        )}
 
         <div className="row">
           <div className="col-lg-8 d-flex align-items-stretch">
@@ -590,25 +604,55 @@ const redemptionRateSafe = safeNumber(promoImpact?.redemptionRate);
           </div>
         </div>
 
-        <div className="row mt-4">
-          <div className="col-lg-6">
-            <div className="card h-100">
-              <div className="card-header">Biểu đồ tổng quan số lượng</div>
-              <div className="card-body">
-                <Pie data={pieData} />
-              </div>
-            </div>
-          </div>
+        {bestSellers.length > 0 && (
+          <div className="row mt-4">
+            <div className="col-12">
+              <div className="card">
+                <div className="card-header d-flex justify-content-between align-items-center fw-semibold">
+                  <span>Top {topLimit} Sản phẩm bán chạy</span>
+                  <select
+                    className="form-select form-select-sm w-auto"
+                    value={topLimit}
+                    onChange={(e) => setTopLimit(Number(e.target.value))}
+                  >
+                    {[4, 5, 10, 20, 50].map((n) => (
+                      <option key={n} value={n}>
+                        Top {n}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-          <div className="col-lg-6">
-            <div className="card h-100">
-              <div className="card-header">Biểu đồ tổng quan số lượng</div>
-              <div className="card-body d-flex justify-content-center align-items-center">
-                <Bar data={totalStats} options={barOptions} />
+                <div className="card-body">
+                  {bestSellers.map((item, index) => {
+                    const product = item.variant?.product;
+                    const imageUrl = product?.thumbnail || "/images/no-image.png";
+                    return (
+                      <div
+                        key={index}
+                        className="d-flex mb-4 p-3 border rounded shadow-sm align-items-center"
+                      >
+                        <img
+                          src={imageUrl}
+                          alt={product?.name}
+                          className="rounded me-3"
+                          style={{ width: 60, height: 60, objectFit: "cover" }}
+                        />
+                        <div className="flex-grow-1">
+                          <strong>{product?.name}</strong> – Đã bán{" "}
+                          <strong>{item.totalSold}</strong> lần
+                          <div className="text-muted small">
+                            SKU: {item.variant?.sku}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
       </div>
     </div>
