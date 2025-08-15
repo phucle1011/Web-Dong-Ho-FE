@@ -69,6 +69,16 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
     return product.variants || [];
   }, [product.variants]);
 
+  // Chỉ giữ biến thể KHÔNG đấu giá
+  const visibleVariants = useMemo(
+    () =>
+      variants.filter(
+        (v) =>
+          !(v.isInAuction || v.isAuctionOnly === 1 || v.is_auction_only === 1)
+      ),
+    [variants]
+  );
+
   useEffect(() => {
     if (variantImages.length > 0) {
       const safeIndex = Math.max(
@@ -85,7 +95,8 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
     if (!product.id) return;
 
     // Initialize data from props
-    const sortedVariants = [...variants].sort((a, b) => {
+    // const sortedVariants = [...variants].sort((a, b) => {
+    const sortedVariants = [...visibleVariants].sort((a, b) => {
       const aInAuc = !!a.isInAuction;
       const bInAuc = !!b.isInAuction;
       if (aInAuc !== bInAuc) {
@@ -121,8 +132,13 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
       setAvgRating(parseFloat(firstValidVariant.averageRating) || 0);
       setRatingCount(parseInt(firstValidVariant.ratingCount) || 0);
       checkWishlistStatus(firstValidVariant.id);
+    } else {
+      // Không có biến thể bán thường -> reset
+      setSelectedVariant(null);
+      setVariantImages([]);
+      setSelectedImage(product.thumbnail || "/images/no-image.jpg");
     }
-  }, [product, variants]);
+  }, [product, visibleVariants]);
 
   useEffect(() => {
     if (selectedVariant) {
@@ -152,13 +168,19 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
     [product, variants]
   );
 
+  // Tổng tồn kho CÓ THỂ MUA (chỉ tính biến thể không đấu giá)
+  const purchasableStock = useMemo(
+    () => visibleVariants.reduce((sum, v) => sum + (parseInt(v.stock) || 0), 0),
+    [visibleVariants]
+  );
+
   const validVariants = useMemo(
     () =>
-      variants.filter(
+      visibleVariants.filter(
         (variant) =>
           parseInt(variant.stock) > 0 && parseFloat(variant.price) > 0
       ),
-    [variants]
+    [visibleVariants]
   );
 
   const priceInfo = useMemo(() => {
@@ -190,7 +212,8 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
         ? Number(percentExact.toFixed(1))
         : Math.round(percentExact);
 
-    const hasStock = totalStock > 0;
+    // const hasStock = totalStock > 0;
+    const hasStock = purchasableStock > 0;
     const discountType =
       selectedVariant?.promotion?.discount_type ||
       representativeVariant?.promotion?.discount_type ||
@@ -216,6 +239,41 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
     discountType,
   } = priceInfo;
 
+  // sau các useMemo variants/visibleVariants/validVariants
+const activeVariant = useMemo(
+  () => selectedVariant || validVariants[0] || visibleVariants[0] || null,
+  [selectedVariant, validVariants, visibleVariants]
+);
+
+useEffect(() => {
+  if (!product.id) return;
+
+  // Không còn biến thể bán thường → reset & thoát
+  if (visibleVariants.length === 0) {
+    setSelectedVariant(null);
+    setVariantImages([]);
+    setSelectedImage(product.thumbnail || "/images/no-image.jpg");
+    return;
+  }
+
+  // Nếu selectedVariant không còn hợp lệ (vì bị lọc đấu giá), set sang biến thể khả dụng đầu tiên
+  if (!selectedVariant || !visibleVariants.some(v => v.id === selectedVariant.id)) {
+    const preferred = validVariants[0] || visibleVariants[0];
+    setSelectedVariant(preferred);
+    setVariantImages(preferred?.images || []);
+    setSelectedImage(
+      preferred?.images?.[0]?.image_url ||
+      product.thumbnail ||
+      "/images/no-image.jpg"
+    );
+    setAvgRating(parseFloat(preferred?.averageRating) || 0);
+    setRatingCount(parseInt(preferred?.ratingCount) || 0);
+    if (preferred?.id) checkWishlistStatus(preferred.id);
+  }
+}, [product.id, visibleVariants, validVariants, selectedVariant]);
+
+
+
   const thumbnail =
     selectedImage || product.thumbnail?.trim() || "/images/no-image.jpg";
   const productName =
@@ -226,17 +284,16 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
     () => getVariantLabel(selectedVariant),
     [selectedVariant]
   );
-// Giới hạn độ dài tên sản phẩm khi hiển thị kèm biến thể
-const shortenText = (text, maxLength) => {
-  if (!text) return "";
-  return text.length > maxLength ? text.slice(0, maxLength) + "..." : text;
-};
+  // Giới hạn độ dài tên sản phẩm khi hiển thị kèm biến thể
+  const shortenText = (text, maxLength) => {
+    if (!text) return "";
+    return text.length > maxLength ? text.slice(0, maxLength) + "..." : text;
+  };
 
-// Nếu có biến thể thì cắt ngắn tên sản phẩm, ví dụ chỉ giữ 40 ký tự
-const displayName = variantLabel
-  ? `${shortenText(productName, 20)} - ${variantLabel}`
-  : productName;
-
+  // Nếu có biến thể thì cắt ngắn tên sản phẩm, ví dụ chỉ giữ 40 ký tự
+  const displayName = variantLabel
+    ? `${shortenText(productName, 20)} - ${variantLabel}`
+    : productName;
 
   const maxStock = 5;
   const stockPercentage =
@@ -301,7 +358,7 @@ const displayName = variantLabel
 
   const addToCart = () => {
     const isAuction = selectedVariant?.isInAuction;
-    if (variants.length > 0 && !selectedVariant) {
+    if (visibleVariants.length > 0 && !selectedVariant) {
       toast.error("Vui lòng chọn biến thể trước khi thêm vào giỏ hàng");
       return;
     }
@@ -597,13 +654,13 @@ const displayName = variantLabel
               <StarRating rating={avgRating} readOnly />
               <span className="text-sm text-gray-600"></span>
             </div>
-            {variants.length > 0 && (
+            {visibleVariants.length > 0 && (
               <div>
                 <span className="block text-xs font-medium text-gray-600 mb-1">
                   Biến thể:
                 </span>
                 <div className="grid grid-cols-2 gap-2">
-                  {variants.map((variant) => {
+                  {visibleVariants.map((variant) => {
                     const name = variant.name || variant.sku || "Unnamed";
 
                     // TÍNH GIÁ TRƯỚC
@@ -810,14 +867,14 @@ const displayName = variantLabel
                 onClick={addToCart}
                 className={`flex-1 py-2 bg-blue-600 text-white text-sm font-medium rounded uppercase tracking-wide hover:bg-blue-700 transition-colors duration-200 ${
                   !hasStock ||
-                  (variants.length > 0 && !selectedVariant) ||
+                  (visibleVariants.length > 0 && !selectedVariant) ||
                   selectedVariant?.isInAuction
                     ? "opacity-50 cursor-not-allowed"
                     : ""
                 }`}
                 disabled={
                   !hasStock ||
-                  (variants.length > 0 && !selectedVariant) ||
+                  (visibleVariants.length > 0 && !selectedVariant) ||
                   selectedVariant?.isInAuction
                 }
                 title={
@@ -848,8 +905,8 @@ const displayName = variantLabel
       document.body
     );
 
-  if (!product.id) {
-    console.warn("Skipping render for product with invalid ID:", product);
+  // Ẩn hoàn toàn card nếu không có biến thể bán thường
+  if (!product.id || visibleVariants.length === 0) {
     return null;
   }
 
@@ -894,14 +951,14 @@ const displayName = variantLabel
             type="button"
             className={`bg-blue-600 hover:bg-blue-700 text-white w-full h-full flex items-center justify-center gap-2 ${
               !hasStock ||
-              (variants.length > 0 && !selectedVariant) ||
+              (visibleVariants.length > 0 && !selectedVariant) ||
               selectedVariant?.isInAuction
                 ? "opacity-50 cursor-not-allowed"
                 : ""
             }`}
             disabled={
               !hasStock ||
-              (variants.length > 0 && !selectedVariant) ||
+              (visibleVariants.length > 0 && !selectedVariant) ||
               selectedVariant?.isInAuction
             }
             title={

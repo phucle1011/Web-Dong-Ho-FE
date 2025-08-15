@@ -30,7 +30,9 @@ const PromotionProductForm = ({ onSuccess }) => {
   } = useForm();
 
   // Số lượt còn lại của khuyến mãi đang chọn
-  const remainingQty = selectedPromotion?.quantity ? Number(selectedPromotion.quantity) : 0;
+  const remainingQty = selectedPromotion?.quantity
+    ? Number(selectedPromotion.quantity)
+    : 0;
 
   // Hết lượt thì báo và khóa chọn biến thể
   useEffect(() => {
@@ -39,7 +41,9 @@ const PromotionProductForm = ({ onSuccess }) => {
       setSelectedVariantIds([]);
       setValue("product_variant_id", []);
       setVariantQuantities({});
-      toast.warning("Khuyến mãi đã hết lượt sử dụng. Vui lòng chọn khuyến mãi khác!");
+      toast.warning(
+        "Khuyến mãi đã hết lượt sử dụng. Vui lòng chọn khuyến mãi khác!"
+      );
     }
   }, [selectedPromotion, remainingQty, setValue]);
 
@@ -60,7 +64,9 @@ const PromotionProductForm = ({ onSuccess }) => {
 
   const fetchPromotions = async () => {
     try {
-      const res = await axios.get(`${Constants.DOMAIN_API}/admin/promotions/ss/all`);
+      const res = await axios.get(
+        `${Constants.DOMAIN_API}/admin/promotions/ss/all`
+      );
       const data = Array.isArray(res.data.data) ? res.data.data : [];
       setPromotions(data);
     } catch (error) {
@@ -75,7 +81,9 @@ const PromotionProductForm = ({ onSuccess }) => {
 
   const fetchProductVariants = async () => {
     try {
-      const res = await axios.get(`${Constants.DOMAIN_API}/admin/product-variants`);
+      const res = await axios.get(
+        `${Constants.DOMAIN_API}/admin/product-variants`
+      );
       setProductVariants(res.data.data || []);
     } catch (error) {
       console.error("Lỗi khi tải danh sách biến thể sản phẩm:", {
@@ -174,7 +182,9 @@ const PromotionProductForm = ({ onSuccess }) => {
       const names = overStockVariants
         .map((id) => {
           const variant = productVariants.find((v) => v.id === parseInt(id));
-          return `${variant?.sku || "N/A"} (${variant?.product?.name || "Không rõ"})`;
+          return `${variant?.sku || "N/A"} (${
+            variant?.product?.name || "Không rõ"
+          })`;
         })
         .join(", ");
       toast.error(`Số lượng vượt tồn kho cho: ${names}`);
@@ -190,7 +200,9 @@ const PromotionProductForm = ({ onSuccess }) => {
         .map((id) => {
           const variant = productVariants.find((v) => v.id === parseInt(id));
           return variant
-            ? `${variant.sku} (${variant.product?.name || "Tên không xác định"})`
+            ? `${variant.sku} (${
+                variant.product?.name || "Tên không xác định"
+              })`
             : id;
         })
         .join(", ");
@@ -222,7 +234,10 @@ const PromotionProductForm = ({ onSuccess }) => {
 
       // Cập nhật danh sách đã sử dụng
       setUsedVariantIds((prev) => [
-        ...new Set([...prev, ...data.product_variant_id.map((id) => parseInt(id))]),
+        ...new Set([
+          ...prev,
+          ...data.product_variant_id.map((id) => parseInt(id)),
+        ]),
       ]);
       setUsedPromotionIds((prev) => [
         ...new Set([...prev, parseInt(data.promotion_id)]),
@@ -268,13 +283,17 @@ const PromotionProductForm = ({ onSuccess }) => {
 
   const availableVariants = productVariants
     .filter((variant) => {
-      if (usedVariantIds.includes(variant.id) || selectedVariantIds.includes(variant.id.toString())) {
-        return false;
-      }
+      // if (usedVariantIds.includes(variant.id) || selectedVariantIds.includes(variant.id.toString())) {
+      //   return false;
+      // }
 
+      // Ẩn biến thể hết hàng
+      if (!variant.stock || Number(variant.stock) <= 0) return false;
+      if (usedVariantIds.includes(variant.id)) return false;
       if (
         selectedPromotion?.min_price_threshold &&
-        parseFloat(variant.price) < parseFloat(selectedPromotion.min_price_threshold)
+        parseFloat(variant.price) <
+          parseFloat(selectedPromotion.min_price_threshold)
       ) {
         return false;
       }
@@ -308,7 +327,8 @@ const PromotionProductForm = ({ onSuccess }) => {
       const discountAmounts = prices.map(
         (price) => price * (selectedPromotion.discount_value / 100)
       );
-      const maxDiscount = discountAmounts.length > 0 ? Math.max(...discountAmounts) : 0;
+      const maxDiscount =
+        discountAmounts.length > 0 ? Math.max(...discountAmounts) : 0;
       setMaxDiscountValue(maxDiscount);
     } else {
       setMaxDiscountValue(
@@ -352,6 +372,68 @@ const PromotionProductForm = ({ onSuccess }) => {
       quantity: promo.quantity,
     };
   });
+
+  // Tạo object {id: 1} cho các id đã chọn để khởi tạo số lượng
+  const initQuantitiesFor = (ids) => {
+    const q = {};
+    ids.forEach((id) => (q[id] = 1));
+    return q;
+  };
+
+  const handleSelectAll = () => {
+    if (!selectedPromotionId) {
+      toast.warning("Vui lòng chọn khuyến mãi trước!");
+      return;
+    }
+    if (remainingQty <= 0) {
+      toast.warning("Khuyến mãi đã hết lượt áp dụng.");
+      return;
+    }
+    const remainingSlots = Math.max(
+      0,
+      remainingQty - selectedVariantIds.length
+    );
+    if (remainingSlots === 0) {
+      return toast.info(
+        "Bạn đã đạt số lượng biến thể tối đa cho khuyến mãi này."
+      );
+    }
+
+    // Lấy tối đa remainingQty từ danh sách availableVariants
+    const allIds = availableVariants.map((v) => v.value);
+    const limitedIds = allIds.slice(0, remainingQty);
+    const candidates = availableVariants
+      .map((v) => v.value)
+      .filter((id) => !selectedVariantIds.includes(id));
+    const limitedToFill = candidates.slice(0, remainingSlots);
+    const newIds = [...selectedVariantIds, ...limitedToFill];
+    if (limitedIds.length === 0) {
+      toast.info("Không có biến thể nào khả dụng để chọn.");
+      return;
+    }
+
+    setSelectedVariantIds(limitedIds);
+    setValue("product_variant_id", limitedIds);
+    setSelectedVariantIds(newIds);
+    setValue("product_variant_id", newIds);
+    setVariantQuantities((prev) => {
+      const merged = { ...prev, ...initQuantitiesFor(newIds) };
+
+      // đảm bảo không vượt stock khi render nhập số lượng
+      return merged;
+    });
+    trigger("product_variant_id");
+    toast.success(
+      `Đã chọn thêm ${limitedToFill.length} biến thể (tổng ${newIds.length}).`
+    );
+  };
+
+  const handleClearAll = () => {
+    setSelectedVariantIds([]);
+    setValue("product_variant_id", []);
+    setVariantQuantities({});
+    trigger("product_variant_id");
+  };
 
   return (
     <div className="font mb-4">
@@ -419,7 +501,8 @@ const PromotionProductForm = ({ onSuccess }) => {
                 SingleValue: CustomSingleValue,
               }}
               onChange={(opt) => {
-                const promo = promotions.find((p) => p.id === opt?.value) || null;
+                const promo =
+                  promotions.find((p) => p.id === opt?.value) || null;
                 setSelectedPromotionId(promo?.id || null);
                 setValue("promotion_id", promo?.id || "");
                 trigger("promotion_id");
@@ -460,9 +543,52 @@ const PromotionProductForm = ({ onSuccess }) => {
             )}
           </div>
 
+          <div className="mb-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSelectAll}
+              disabled={
+                !selectedPromotionId ||
+                remainingQty <= 0 ||
+                availableVariants.length === 0
+              }
+              className={`px-3 py-1 rounded border text-sm ${
+                !selectedPromotionId ||
+                remainingQty <= 0 ||
+                availableVariants.length === 0
+                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                  : "bg-[#073272] text-white hover:bg-[#052354]"
+              }`}
+              title="Chọn tối đa số biến thể bằng số lượt còn lại"
+            >
+              Chọn tất cả biến thể
+            </button>
+
+            <button
+              type="button"
+              onClick={handleClearAll}
+              disabled={selectedVariantIds.length === 0}
+              className={`px-3 py-1 rounded border text-sm ${
+                selectedVariantIds.length === 0
+                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                  : "bg-white text-gray-800 hover:bg-gray-100"
+              }`}
+            >
+              Bỏ chọn
+            </button>
+
+            {selectedPromotionId && (
+              <span className="text-xs text-gray-600">
+                Đã chọn: <b>{selectedVariantIds.length}</b> / Tối đa:{" "}
+                <b>{remainingQty}</b>
+              </span>
+            )}
+          </div>
+
           <div className="mb-4">
             <label className="form-label block text-sm font-medium text-gray-700 mb-2">
-              Chọn các biến thể sản phẩm * (Tìm kiếm và chọn liên tục nhiều biến thể)
+              Chọn các biến thể sản phẩm * (Tìm kiếm và chọn liên tục nhiều biến
+              thể)
             </label>
             <Select
               isMulti
@@ -470,6 +596,13 @@ const PromotionProductForm = ({ onSuccess }) => {
               options={availableVariants}
               className="basic-multi-select"
               classNamePrefix="select"
+              value={availableVariants.filter((opt) =>
+                selectedVariantIds.includes(opt.value)
+              )}
+              isOptionDisabled={(opt) =>
+                selectedVariantIds.includes(opt.value) ||
+                selectedVariantIds.length >= remainingQty
+              }
               onChange={(selectedOptions) => {
                 const selectedIds = selectedOptions
                   ? selectedOptions.map((opt) => opt.value)
@@ -520,7 +653,9 @@ const PromotionProductForm = ({ onSuccess }) => {
               </small>
             )}
             <p className="text-xs text-gray-600 mt-2">
-              Tìm kiếm bằng SKU hoặc tên sản phẩm để chọn liên tục nhiều biến thể. Nhấn vào tùy chọn để thêm hoặc xóa. Các biến thể đã chọn sẽ hiển thị bên dưới để nhập số lượng.{" "}
+              Tìm kiếm bằng SKU hoặc tên sản phẩm để chọn liên tục nhiều biến
+              thể. Nhấn vào tùy chọn để thêm hoặc xóa. Các biến thể đã chọn sẽ
+              hiển thị bên dưới để nhập số lượng.{" "}
               {selectedPromotionId &&
                 `Số lượng biến thể tối đa: ${remainingQty}`}
             </p>
@@ -559,7 +694,9 @@ const PromotionProductForm = ({ onSuccess }) => {
                           <td className="px-4 py-2 border text-center">
                             {index + 1}
                           </td>
-                          <td className="px-4 py-2 border">{variant?.sku || "N/A"}</td>
+                          <td className="px-4 py-2 border">
+                            {variant?.sku || "N/A"}
+                          </td>
                           <td className="px-4 py-2 border">
                             {variant?.product?.name || "Tên SP không xác định"}
                           </td>
@@ -642,7 +779,9 @@ const PromotionProductForm = ({ onSuccess }) => {
               type="submit"
               disabled={isLoading || remainingQty <= 0}
               className={`bg-[#073272] text-white px-6 py-2 rounded hover:bg-[#052354] transition ${
-                isLoading || remainingQty <= 0 ? "opacity-50 cursor-not-allowed" : ""
+                isLoading || remainingQty <= 0
+                  ? "opacity-50 cursor-not-allowed"
+                  : ""
               }`}
             >
               {isLoading ? "Đang thêm..." : "Thêm mới"}
