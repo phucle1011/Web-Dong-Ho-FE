@@ -198,19 +198,31 @@ const ProductsTable = ({ className, onTotalChange, onSelectedItemsChange, onCart
     }, 0);
   };
 
-  const calculateSelectedTotal = () => {
-    return cartItems.reduce((total, item) => {
-      if (selectedItems.includes(item.product_variant_id)) {
-        const auctionInfo = getAuctionInfo(item.variant, meId, item.created_at);
-        const price = auctionInfo.isAuction
-          ? auctionInfo.bidAmount
-          : parseFloat(item.variant?.promotion?.discounted_price || item.variant?.price || 0);
-        const quantity = parseInt(item.quantity || 0);
-        return total + price * quantity;
-      }
-      return total;
-    }, 0);
-  };
+const calculateSelectedTotal = () => {
+  return cartItems.reduce((total, item) => {
+    if (!selectedItems.includes(item.product_variant_id)) return total;
+
+    const auctionInfo = getAuctionInfo(item.variant, meId, item.created_at);
+    const quantity = parseInt(item.quantity || 0);
+
+    if (auctionInfo.isAuction) {
+      const price = auctionInfo.bidAmount || 0;
+      return total + price * quantity;
+    }
+
+    const basePrice = parseFloat(item.variant?.price || 0);
+    const discountedPrice = parseFloat(item.variant?.promotion?.discounted_price || basePrice);
+    const variantQuantityLimit = parseInt(item.variant?.promotion?.limited_quantity || 0);
+
+    const discountedQty = Math.min(quantity, variantQuantityLimit);
+    const normalQty = Math.max(0, quantity - discountedQty);
+
+    const lineTotal = discountedQty * discountedPrice + normalQty * basePrice;
+
+    return total + lineTotal;
+  }, 0);
+};
+
 
   const handleSelect = (variantId) => {
     setSelectedItems((prev) =>
@@ -455,6 +467,47 @@ const ProductsTable = ({ className, onTotalChange, onSelectedItemsChange, onCart
   }, []);
 
   const remainingCount = Math.max(3 - failedCount, 0);
+function computeLine(item, userId) {
+  const variant = item.variant;
+  const quantity = item.quantity || 0;
+  const isAuction = getAuctionInfo(variant, userId, item.created_at).isAuction;
+
+  if (isAuction) {
+    const bidAmount = getAuctionInfo(variant, userId, item.created_at).bidAmount || 0;
+    return {
+      isAuction: true,
+      basePrice: bidAmount,
+      discountedUnitPrice: bidAmount,
+      discountedQty: quantity,
+      normalQty: 0,
+      lineTotal: bidAmount * quantity,
+      lineSaved: 0,
+      discountPercent: 0,
+    };
+  }
+
+  const basePrice = parseFloat(variant?.price ?? 0);
+  const promo = variant?.promotion ?? {};
+  const discountedUnitPrice = parseFloat(promo.discounted_price ?? basePrice);
+  const discountPercent = parseFloat(promo.discount_percent ?? 0);
+  const limitedQty = parseInt(promo.limited_quantity ?? 0);
+
+  const discountedQty = Math.min(quantity, limitedQty);
+  const normalQty = Math.max(quantity - discountedQty, 0);
+  const lineTotal = discountedQty * discountedUnitPrice + normalQty * basePrice;
+  const lineSaved = (basePrice - discountedUnitPrice) * discountedQty;
+
+  return {
+    isAuction: false,
+    basePrice,
+    discountedUnitPrice,
+    discountedQty,
+    normalQty,
+    lineTotal,
+    lineSaved,
+    discountPercent
+  };
+}
 
   return (
     <div className={`w-full ${className || ""}`}>
@@ -511,13 +564,14 @@ const ProductsTable = ({ className, onTotalChange, onSelectedItemsChange, onCart
               </tr>
             ) : (
               cartItems.map((item) => {
+                
                 const variant = item?.variant || null;
                 const image = variant?.images?.[0]?.image_url || "";
                 // const originalPrice = parseFloat(variant.price || 0);
                 const originalPrice = parseFloat(variant?.price ?? 0);
                 // const price = parseFloat(variant.promotion?.discounted_price || variant.price || 0);
                 // const discountPercent = parseFloat(variant.promotion?.discount_percent || 0);
-                const discountPercent = parseFloat(variant?.promotion?.discount_percent ?? 0);
+                // const discountPercent = parseFloat(variant?.promotion?.discount_percent ?? 0);
                 const quantity = item.quantity;
                 // const stock = variant.stock;
                 const stock = Number(variant?.stock ?? 0);
@@ -537,14 +591,24 @@ const ProductsTable = ({ className, onTotalChange, onSelectedItemsChange, onCart
                 //   : parseFloat(variant.promotion?.discounted_price || variant.price || 0);
                 // const total = price * quantity;
                 const auctionInfo = getAuctionInfo(variant, meId, item.created_at);
-                const isAuction = auctionInfo.isAuction;
+                // const isAuction = auctionInfo.isAuction;
                 // const price = isAuction
                 //   ? auctionInfo.bidAmount
                 //   : parseFloat(variant.promotion?.discounted_price || variant.price || 0);
-                 const price = isAuction
-  ? Number(auctionInfo.bidAmount || 0)
-  : parseFloat(variant?.promotion?.discounted_price ?? variant?.price ?? 0);
-                const total = price * quantity;
+                 const line = computeLine(item, meId);
+const {
+  isAuction,
+  basePrice,
+  discountedUnitPrice,
+  discountedQty,
+  normalQty,
+  lineTotal,
+  lineSaved,
+  discountPercent
+} = line;
+
+const total = lineTotal;
+const price = discountedUnitPrice;
 
                 // const targetAuction = item.variant.auctions.find(a => a.id === auctionInfo.auctionId);
                 const targetAuction = variant?.auctions?.find?.(a => a.id === auctionInfo.auctionId);

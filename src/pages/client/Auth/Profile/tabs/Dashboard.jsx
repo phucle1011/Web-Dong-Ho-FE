@@ -96,7 +96,7 @@ export default function Dashboard() {
         </div>
       </div>
       <div className="quick-view-grid w-full flex justify-between items-center mt-3 ">
-        <div className="qv-item w-[252px] h-[208px] bg-qblack group hover:bg-qyellow transition-all duration-300 ease-in-out p-6">
+<div className="qv-item w-[252px] h-[208px] bg-qblack group hover:bg-blue-500 transition-all duration-300 ease-in-out p-6">
           <div className="w-[62px] h-[62px] rounded bg-white flex justify-center items-center">
             <span>
               <svg
@@ -128,7 +128,7 @@ export default function Dashboard() {
             {totalItems}
           </span>
         </div>
-        <div className="qv-item w-[252px] h-[208px] bg-qblack group hover:bg-qyellow transition-all duration-300 ease-in-out p-6">
+<div className="qv-item w-[252px] h-[208px] bg-qblack group hover:bg-blue-500 transition-all duration-300 ease-in-out p-6">
           <div className="w-[62px] h-[62px] rounded bg-white flex justify-center items-center">
             <span>
               <svg
@@ -152,7 +152,7 @@ export default function Dashboard() {
             {stats.totalCompletedOrders}
           </span>
         </div>
-        <div className="qv-item w-[252px] h-[208px] bg-qblack group hover:bg-qyellow transition-all duration-300 ease-in-out p-6">
+<div className="qv-item w-[252px] h-[208px] bg-qblack group hover:bg-blue-500 transition-all duration-300 ease-in-out p-6">
           <div className="w-[62px] h-[62px] rounded bg-white flex justify-center items-center">
             <span>
               <svg
@@ -186,70 +186,115 @@ export default function Dashboard() {
         </div>
       </div>
       <div className="dashboard-info mt-8 flex justify-between items-center bg-primarygray px-7 py-7">
-        {/* Thông tin cá nhân */}
-        <div>
-          <p className="title text-[22px] font-semibold">Thông tin cá nhân</p>
-          <div className="mt-5">
-            <table>
-              <tbody>
-                <tr className="inline-flex mb-5">
-                  <td className="text-base text-qgraytwo w-[100px] block">Họ tên:</td>
-                  <td className="text-base text-qblack font-medium">{user.name}</td>
-                </tr>
-                <tr className="inline-flex mb-5">
-                  <td className="text-base text-qgraytwo w-[100px] block">Email:</td>
-                  <td className="text-base text-qblack font-medium">{user.email}</td>
-                </tr>
-                <tr className="inline-flex mb-5">
-                  <td className="text-base text-qgraytwo w-[100px] block">SĐT:</td>
-                  <td className="text-base text-qblack font-medium">{user.phone}</td>
-                </tr>
-                <tr className="inline-flex mb-5">
-                  <td className="text-base text-qgraytwo w-[100px] block">Tỉnh/TP:</td>
-                  <td className="text-base text-qblack font-medium">
-                    {user.address?.city || "Chưa cập nhật"}
-                  </td>
-                </tr>
-                <tr className="inline-flex mb-5">
-                  <td className="text-base text-qgraytwo w-[100px] block">Địa chỉ:</td>
-                  <td className="text-base text-qblack font-medium">
-                    {user.address?.address_line || "Chưa cập nhật"}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+  {/* Thông tin cá nhân */}
+  <div>
+    <p className="title text-[22px] font-semibold">Thông tin cá nhân</p>
+    <div className="mt-5">
+      <table>
+        <tbody>
+          <tr className="inline-flex mb-4">
+            <td className="text-base text-qgraytwo w-[100px] block">Họ tên:</td>
+            <td className="text-base text-qblack font-medium">{user.name}</td>
+          </tr>
+          <tr className="inline-flex mb-4">
+            <td className="text-base text-qgraytwo w-[100px] block">Email:</td>
+            <td className="text-base text-qblack font-medium">{user.email}</td>
+          </tr>
+          <tr className="inline-flex mb-4">
+            <td className="text-base text-qgraytwo w-[100px] block">SĐT:</td>
+            <td className="text-base text-qblack font-medium">{user.phone}</td>
+          </tr>
+          <tr className="inline-flex mb-4">
+            <td className="text-base text-qgraytwo w-[100px] block">Tỉnh/TP:</td>
+            <td
+              className={
+                user.address?.city
+                  ? "text-base text-qblack font-medium"
+                  : "text-base text-gray-400 italic"
+              }
+            >
+              {user.address?.city || "Chưa cập nhật"}
+            </td>
+          </tr>
+          <tr className="inline-flex mb-4">
+            <td className="text-base text-qgraytwo w-[100px] block">Địa chỉ:</td>
+            <td
+              className={
+                user.address?.address_line
+                  ? "text-base text-qblack font-medium"
+                  : "text-base text-gray-400 italic"
+              }
+            >
+              {user.address?.address_line || "Chưa cập nhật"}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-        <div className="w-[1px] h-[164px] bg-[#E4E4E4]"></div>
+  <div className="w-[1px] h-[164px] bg-[#E4E4E4]"></div>
 
-        {/* Thông tin địa chỉ */}
-        <div className="ml-6">
-          <p className="title text-[22px] font-semibold">Thông tin địa chỉ</p>
-          <div className="mt-5">
-            <table>
-              <tbody>
-                <tr className="inline-flex mb-5">
-                  <td className="text-base text-qgraytwo w-[100px] block">Phường/Xã:</td>
-                  <td className="text-base text-qblack font-medium">{user.address?.ward || "Chưa cập nhật"}</td>
-                </tr>
-                <tr className="inline-flex mb-5">
-                  <td className="text-base text-qgraytwo w-[100px] block">Quận/Huyện:</td>
-                  <td className="text-base text-qblack font-medium">{user.address?.district || "Chưa cập nhật"}</td>
-                </tr>
-                <tr className="inline-flex mb-5">
-                  <td className="text-base text-qgraytwo w-[100px] block">Tỉnh/TP:</td>
-                  <td className="text-base text-qblack font-medium">{user.address?.city || "Chưa cập nhật"}</td>
-                </tr>
-                <tr className="inline-flex mb-5">
-                  <td className="text-base text-qgraytwo w-[100px] block">Địa chỉ chi tiết:</td>
-                  <td className="text-base text-qblack font-medium">{user.address?.address_line || "Chưa cập nhật"}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+  {/* Thông tin địa chỉ */}
+  <div className="ml-6">
+    <p className="title text-[22px] font-semibold">Thông tin địa chỉ</p>
+    <div className="mt-5">
+      <table>
+        <tbody>
+          <tr className="inline-flex mb-4">
+            <td className="text-base text-qgraytwo w-[100px] block">Phường/Xã:</td>
+            <td
+              className={
+                user.address?.ward
+                  ? "text-base text-qblack font-medium"
+                  : "text-base text-gray-400 italic"
+              }
+            >
+              {user.address?.ward || "Chưa cập nhật"}
+            </td>
+          </tr>
+          <tr className="inline-flex mb-4">
+            <td className="text-base text-qgraytwo w-[100px] block">Quận/Huyện:</td>
+            <td
+              className={
+                user.address?.district
+                  ? "text-base text-qblack font-medium"
+                  : "text-base text-gray-400 italic"
+              }
+            >
+              {user.address?.district || "Chưa cập nhật"}
+            </td>
+          </tr>
+          <tr className="inline-flex mb-4">
+            <td className="text-base text-qgraytwo w-[100px] block">Tỉnh/TP:</td>
+            <td
+              className={
+                user.address?.city
+                  ? "text-base text-qblack font-medium"
+                  : "text-base text-gray-400 italic"
+              }
+            >
+              {user.address?.city || "Chưa cập nhật"}
+            </td>
+          </tr>
+          <tr className="inline-flex mb-4">
+            <td className="text-base text-qgraytwo w-[100px] block">Địa chỉ chi tiết:</td>
+            <td
+              className={
+                user.address?.address_line
+                  ? "text-base text-qblack font-medium"
+                  : "text-base text-gray-400 italic"
+              }
+            >
+              {user.address?.address_line || "Chưa cập nhật"}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 
     </>
   );

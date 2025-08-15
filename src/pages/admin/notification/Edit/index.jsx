@@ -67,49 +67,54 @@ const EditNotification = () => {
   };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [promoRes, notiRes] = await Promise.all([
-          axios.get(`${Constants.DOMAIN_API}/admin/active-products`),
-          axios.get(`${Constants.DOMAIN_API}/admin/flashSale/${id}`),
-        ]);
+  const fetchData = async () => {
+    try {
+      const [promoRes, notiRes] = await Promise.all([
+        axios.get(`${Constants.DOMAIN_API}/admin/active-products`),
+        axios.get(`${Constants.DOMAIN_API}/admin/flashSale/${id}`),
+      ]);
 
-        const now = new Date();
-        const mappedPromotions = promoRes.data.data.map((p) => {
-          const start = new Date(p.start_date);
-          const daysLeft = Math.ceil((start - now) / (1000 * 60 * 60 * 24));
-          const timeText =
-            daysLeft > 0 ? `${daysLeft} ngày nữa` : "Đang diễn ra";
-          return {
-            value: p.id,
-            name: p.name,
-            timeText,
-            variant_count: p.variant_count,
-          };
-        });
+      const now = new Date();
+      const mappedPromotions = promoRes.data.data.map((p) => {
+        const start = new Date(p.start_date);
+        const daysLeft = Math.ceil((start - now) / (1000 * 60 * 60 * 24));
+        const timeText = daysLeft > 0 ? `${daysLeft} ngày nữa` : "Đang diễn ra";
+        return {
+          value: p.id,
+          name: p.name,
+          timeText,
+          variant_count: p.variant_count,
+        };
+      });
 
-        const noti = notiRes.data.data;
-        setTitle(noti.title);
-        setThumbnail({ url: noti.thumbnail, public_id: "" }); // vì public_id từ backend không có, chỉ có url
-        setStartDate(new Date(noti.start_date));
-        setEndDate(new Date(noti.end_date));
-        setStatus(noti.status === 1);
-        const selected = noti.flashSale.map((fs) => ({
-          value: fs.promotion.id,
-          name: fs.promotion.name,
-          timeText: "",
-          variant_count: 0,
-        }));
-        setSelectedPromotions(selected);
-        setPromotions(mappedPromotions);
-      } catch (err) {
-        toast.error("Lỗi khi tải dữ liệu chi tiết!");
-        navigate("/admin/notification/getAll");
-      }
-    };
-    fetchPromotions();
-    fetchData();
-  }, [id, navigate]);
+      const noti = notiRes.data.data;
+      console.log("noti", noti); // kiểm tra cấu trúc thực tế
+
+      setTitle(noti.title);
+      setThumbnail({ url: noti.thumbnail, public_id: "" });
+      setStartDate(new Date(noti.start_date));
+      setEndDate(new Date(noti.end_date));
+      setStatus(noti.status === 1);
+
+      const selected = noti.notification_promotions.map((fs) => ({
+        value: fs.promotion.id,
+        name: fs.promotion.name,
+        timeText: "",
+        variant_count: 0,
+      }));
+
+      setSelectedPromotions(selected);
+      setPromotions(mappedPromotions);
+    } catch (err) {
+      console.error(err);
+      toast.error("Lỗi khi tải dữ liệu chi tiết!");
+      navigate("/admin/notification/getAll");
+    }
+  };
+
+  fetchData();
+}, [id, navigate]);
+
 
   const validate = () => {
     const errs = {};

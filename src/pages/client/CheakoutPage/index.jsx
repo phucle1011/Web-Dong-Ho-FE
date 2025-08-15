@@ -1420,7 +1420,7 @@ export default function CheckoutPage() {
                                 {!isAuction && (
                                   <div className="text-right min-w-[100px]">
                                     <span className="text-lg font-bold text-qred block">
-                                      {Number(total).toLocaleString("vi-VN", { style: "currency", currency: "VND" })}
+                                      {Number(totalPrice).toLocaleString("vi-VN", { style: "currency", currency: "VND" })}
                                     </span>
                                   </div>
                                 )}
