@@ -24,7 +24,7 @@ export default function Footer({ type }) {
                 <img
                   width="152"
                   height="36"
-                  src={`${process.env.REACT_APP_PUBLIC_URL}/assets/images/logos/logo.png`}
+                  src={`https://res.cloudinary.com/disgf4yl7/image/upload/v1755192506/l5p21sv5fnoobblwdwia.png`}
                   alt="logo"
                 />
               </Link>
@@ -48,21 +48,21 @@ export default function Footer({ type }) {
                 <ul className="flex flex-col space-y-4 ">
                   <li>
                     <Link to="/about">
-                      <span className="text-[#9A9A9A] text-[15px] hover:text-qblack border-b border-transparent hover:border-qblack cursor-pointer capitalize">
+                      <span className="text-[#9A9A9A] text-[15px] border-b border-transparent cursor-pointer capitalize">
                         Về chúng tôi
                       </span>
                     </Link>
                   </li>
                   <li>
                     <Link to="/terms-condition">
-                      <span className="text-[#9A9A9A] text-[15px] hover:text-qblack border-b border-transparent hover:border-qblack cursor-pointer capitalize">
+                      <span className="text-[#9A9A9A] text-[15px] border-b border-transparent cursor-pointer capitalize">
                         Điều khoản & Điều kiện
                       </span>
                     </Link>
                   </li>
                   <li>
                     <Link to="/all-products">
-                      <span className="text-[#9A9A9A] text-[15px] hover:text-qblack border-b border-transparent hover:border-qblack cursor-pointer capitalize">
+                      <span className="text-[#9A9A9A] text-[15px] border-b border-transparent cursor-pointer capitalize">
                         Sản phẩm tốt nhất
                       </span>
                     </Link>
@@ -81,21 +81,21 @@ export default function Footer({ type }) {
                   <ul className="flex flex-col space-y-4 ">
                     <li>
                       <Link to="/blogs">
-                        <span className="text-[#9A9A9A] text-[15px] hover:text-qblack border-b border-transparent hover:border-qblack cursor-pointer capitalize">
+                        <span className="text-[#9A9A9A] text-[15px] border-b border-transparent cursor-pointer capitalize">
                           Tin tức
                         </span>
                       </Link>
                     </li>
                     <li>
                       <Link to="/profile#order">
-                        <span className="text-[#9A9A9A] text-[15px] hover:text-qblack border-b border-transparent hover:border-qblack cursor-pointer capitalize">
+                        <span className="text-[#9A9A9A] text-[15px] border-b border-transparent cursor-pointer capitalize">
                           Đơn hàng
                         </span>
                       </Link>
                     </li>
                     <li>
                       <Link to="/products-compaire">
-                        <span className="text-[#9A9A9A] text-[15px] hover:text-qblack border-b border-transparent hover:border-qblack cursor-pointer capitalize">
+                        <span className="text-[#9A9A9A] text-[15px] border-b border-transparent cursor-pointer capitalize">
                           So sánh sản phẩm
                         </span>
                       </Link>
@@ -113,21 +113,21 @@ export default function Footer({ type }) {
                   <ul className="flex flex-col space-y-4 ">
                     <li>
                       <Link to="/flash-sale">
-                        <span className="text-[#9A9A9A] text-[15px] hover:text-qblack border-b border-transparent hover:border-qblack cursor-pointer capitalize">
+                        <span className="text-[#9A9A9A] text-[15px] border-b border-transparent cursor-pointer capitalize">
                           Giảm giá chớp nhoáng
                         </span>
                       </Link>
                     </li>
                     <li>
                       <Link to="/faq">
-                        <span className="text-[#9A9A9A] text-[15px] hover:text-qblack border-b border-transparent hover:border-qblack cursor-pointer capitalize">
+                        <span className="text-[#9A9A9A] text-[15px] border-b border-transparent cursor-pointer capitalize">
                           Câu hỏi thường gặp
                         </span>
                       </Link>
                     </li>
                     <li>
                       <Link to="/contact">
-                        <span className="text-[#9A9A9A] text-[15px] hover:text-qblack border-b border-transparent hover:border-qblack cursor-pointer capitalize">
+                        <span className="text-[#9A9A9A] text-[15px] border-b border-transparent cursor-pointer capitalize">
                           Hổ trợ
                         </span>
                       </Link>
@@ -142,13 +142,13 @@ export default function Footer({ type }) {
           <div className="flex lg:space-x-5 justify-between items-center mb-3">
             {/* <div className="flex space-x-5 items-center">
               <a href="#">
-                <Instagram className="fill-current text-qgray hover:text-qblack" />
+                <Instagram className="fill-current text-qgray" />
               </a>
               <a href="#">
-                <Facebook className="fill-current text-qgray hover:text-qblack" />
+                <Facebook className="fill-current text-qgray" />
               </a>
               <a href="#">
-                <Youtube className="fill-current text-qgray hover:text-qblack" />
+                <Youtube className="fill-current text-qgray" />
               </a>
             </div> */}
             <span className="sm:text-base text-[10px] text-qgray font-300">

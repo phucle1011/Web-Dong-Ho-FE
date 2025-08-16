@@ -88,7 +88,6 @@ export default function CheckoutPage() {
   }, [checkoutItems, user?.id]);
 
   useEffect(() => {
-    console.log("location", location.state);
 
     if (!location.state && !localStorage.getItem("checkoutData")) {
       console.warn("Không có dữ liệu giỏ hàng");
@@ -150,7 +149,6 @@ export default function CheckoutPage() {
     setVoucherDiscount(savedDiscountInfo?.voucherDiscount || 0);
     const savedVoucher = localStorage.getItem("selectedVoucher");
     setSelectedVoucher(savedVoucher ? JSON.parse(savedVoucher) : null);
-    console.log(savedVoucher ? JSON.parse(savedVoucher) : null);
 
   }, [location.state]);
 
@@ -230,7 +228,7 @@ export default function CheckoutPage() {
       if (response.ok && data.success && Array.isArray(data.data)) {
         setAllAddresses(data.data);
       } else {
-        console.error("Không thể lấy danh sách địa chỉ:", data.message);
+        // console.error("Không thể lấy danh sách địa chỉ:", data.message);
       }
     } catch (error) {
       console.error("Lỗi kết nối server:", error);
@@ -624,7 +622,7 @@ export default function CheckoutPage() {
       return province.ProvinceID;
     } catch (error) {
       console.error("Lỗi khi lấy ProvinceID:", error.message);
-      toast.error("Không thể lấy mã tỉnh");
+      // toast.error("Không thể lấy mã tỉnh");
       return null;
     }
   };
@@ -645,7 +643,7 @@ export default function CheckoutPage() {
       return district.DistrictID;
     } catch (error) {
       console.error("Lỗi khi lấy DistrictID:", error.message);
-      toast.error("Không thể lấy mã quận/huyện");
+      // toast.error("Không thể lấy mã quận/huyện");
       return null;
     }
   };
@@ -666,7 +664,7 @@ export default function CheckoutPage() {
       return ward.WardCode;
     } catch (error) {
       console.error("Lỗi khi lấy WardCode:", error.message);
-      toast.error("Không thể lấy mã phường/xã");
+      // toast.error("Không thể lấy mã phường/xã");
       return null;
     }
   };
@@ -959,9 +957,7 @@ export default function CheckoutPage() {
         // })),
 
         products: checkoutItems.map(item => {
-          console.log('Auctions for variant', item.product_variant_id, item.variant.auctions);
           const info = getAuctionInfo(item.variant, user.id, item.created_at);
-          console.log('Auction info:', info);
           const unitPrice = info.isAuction
             ? info.bidAmount
             : parseFloat(item.variant.promotion?.discounted_price || item.variant.price || 0);
@@ -1011,8 +1007,6 @@ export default function CheckoutPage() {
         orderDescription: `Thanh toan don hang cho ${user.name}`,
         orderType: 'other'
       };
-
-      console.log("Đặt hàng với payload:", payload);
 
       if (selectedPaymentMethod === "VNPay") {
         const response = await axios.post(`${Constants.DOMAIN_API}/orders-vnpay`, payload);

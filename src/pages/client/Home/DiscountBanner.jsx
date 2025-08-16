@@ -5,7 +5,7 @@ export default function DiscountBanner({ className, type }) {
         className || ""
       }`}
       style={{
-        background: `url(${process.env.REACT_APP_PUBLIC_URL}/assets/images/bannerdongho1.png) no-repeat`,
+        background: `url(https://res.cloudinary.com/disgf4yl7/image/upload/v1755192568/vgpnpkuvm5s8unvr9wwz.png) no-repeat`,
         backgroundSize: "cover",
       }}
     >

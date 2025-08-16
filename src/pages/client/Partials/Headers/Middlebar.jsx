@@ -119,9 +119,9 @@ export default function Middlebar({ className, type }) {
               {type === 3 ? (
                 <Link to="/"><img width="152" height="36" src='https://res.cloudinary.com/disgf4yl7/image/upload/v1755192506/l5p21sv5fnoobblwdwia.png' alt="logo" /></Link>
               ) : type === 4 ? (
-                <Link to="/"><img width="152" height="36" src={`${process.env.REACT_APP_PUBLIC_URL}/assets/images/logo-4.svg`} alt="logo" /></Link>
+                <Link to="/"><img width="152" height="36" src='https://res.cloudinary.com/disgf4yl7/image/upload/v1755192506/l5p21sv5fnoobblwdwia.png' alt="logo" /></Link>
               ) : (
-                <Link to="/"><img width="152" height="36" src={`${process.env.REACT_APP_PUBLIC_URL}/assets/images/logo.svg`} alt="logo" /></Link>
+                <Link to="/"><img width="152" height="36" src='https://res.cloudinary.com/disgf4yl7/image/upload/v1755192506/l5p21sv5fnoobblwdwia.png' alt="logo" /></Link>
               )}
             </div>
 

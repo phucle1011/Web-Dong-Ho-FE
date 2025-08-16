@@ -12,7 +12,7 @@ export default function HeaderOne({ className, drawerAction, type = 1 }) {
         type={type}
         className="quomodo-shop-middle-bar lg:block hidden"
       />
-      <div className="quomodo-shop-drawer lg:hidden block w-full h-[60px] bg-white">
+      {/* <div className="quomodo-shop-drawer lg:hidden block w-full h-[60px] bg-white">
         <div className="w-full h-full flex justify-between items-center px-5">
           <div onClick={drawerAction}>
             <svg
@@ -75,7 +75,7 @@ export default function HeaderOne({ className, drawerAction, type = 1 }) {
             </span>
           </div>
         </div>
-      </div>
+      </div> */}
       <Navbar type={type} className="quomodo-shop-nav-bar lg:block hidden" />
     </header>
   );
