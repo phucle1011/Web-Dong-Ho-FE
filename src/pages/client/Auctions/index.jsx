@@ -451,16 +451,16 @@ function AuctionProductDetail() {
                           >
                             {auction.variant?.product?.name || "Không có tên sản phẩm"} ({auction.variant?.sku})
                           </h3>
-
-                          {overflowTitle.upcoming?.[auction.id] && (
-                            <button
-                              className="text-blue-500 text-sm mb-1"
-                              onClick={() => toggleTitle("upcoming", auction.id)}
-                            >
-                              {expanded ? "Ẩn bớt" : "Xem thêm"}
-                            </button>
-                          )}
-
+                          <div className="min-h-[1.5rem]">
+                            {overflowTitle.upcoming?.[auction.id] && (
+                              <button
+                                className="text-blue-500 text-sm mb-1"
+                                onClick={() => toggleTitle("upcoming", auction.id)}
+                              >
+                                {expanded ? "Ẩn bớt" : "Xem thêm"}
+                              </button>
+                            )}
+                          </div>
                           <div className="flex justify-between text-sm font-medium mb-2">
                             <div className="text-green-600">
                               Giá khởi điểm:{" "}
@@ -571,16 +571,16 @@ function AuctionProductDetail() {
                           >
                             {auction.variant?.product?.name || "Không có tên sản phẩm"} ({auction.variant?.sku})
                           </h3>
-
-                          {overflowTitle.ended?.[auction.id] && (
-                            <button
-                              className="text-blue-500 text-sm mb-1"
-                              onClick={() => toggleTitle("ended", auction.id)}
-                            >
-                              {expanded ? "Ẩn bớt" : "Xem thêm"}
-                            </button>
-                          )}
-
+                          <div className="min-h-[1.5rem]">
+                            {overflowTitle.ended?.[auction.id] && (
+                              <button
+                                className="text-blue-500 text-sm mb-1"
+                                onClick={() => toggleTitle("ended", auction.id)}
+                              >
+                                {expanded ? "Ẩn bớt" : "Xem thêm"}
+                              </button>
+                            )}
+                          </div>
                           <div className="flex justify-between text-sm font-medium mb-2">
                             <div className="text-green-600">
                               Giá khởi điểm:{" "}

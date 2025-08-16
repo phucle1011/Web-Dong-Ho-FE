@@ -254,7 +254,7 @@ useEffect(() => {
       </div>
 
       <div className="w-full hidden lg:block h-[295px]">
-        <img src={`${process.env.REACT_APP_PUBLIC_URL}/assets/images/logos/smart_band_4__1.webp`} alt="Quảng cáo" className="w-full h-full object-contain" />
+        <img src='https://res.cloudinary.com/disgf4yl7/image/upload/v1755329037/kbf31cpkz45velmk5hxe.jpg' alt="Quảng cáo" className="w-full h-full object-contain" />
       </div>
 
       <button

@@ -15,7 +15,7 @@ export default function Footer({ type }) {
                 <img
                   width="152"
                   height="36"
-                  src={`${process.env.REACT_APP_PUBLIC_URL}/assets/images/logos/logo.png`}
+                  src='https://res.cloudinary.com/disgf4yl7/image/upload/v1755192506/l5p21sv5fnoobblwdwia.png'
                   alt="logo"
                 />
               </Link>
