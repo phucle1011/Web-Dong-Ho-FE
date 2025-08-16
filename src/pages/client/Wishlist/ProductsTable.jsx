@@ -106,9 +106,7 @@ export default function ProductsTable({ products = [], onWishlistChange, onSelec
                   : "N/A";
                 const avs = item.variant?.attributeValues || [];
                 const isExpanded = expandedRows[item.id];
-                const displayAVs = useMemo(() => {
-                  return isExpanded ? avs : avs.slice(0, 3);
-                }, [avs, isExpanded]);
+                const displayAVs = isExpanded ? avs : avs.slice(0, 3);
                 const imageUrl =
                   item.variant?.images?.[0]?.image_url ||
                   product.thumbnail ||

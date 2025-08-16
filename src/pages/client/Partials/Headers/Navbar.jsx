@@ -10,9 +10,35 @@ export default function Navbar({ className, type }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [wishlistCount, setWishlistCount] = useState(0);
+
 
   const handler = () => {
     setToggle(!categoryToggle);
+  };
+
+  const fetchWishlistCount = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setWishlistCount(0);
+        return;
+      }
+      const decoded = decodeToken(token);
+      const userId = decoded?.id;
+      if (!userId) {
+        setWishlistCount(0);
+        return;
+      }
+      const res = await axios.get(
+        `${Constants.DOMAIN_API}/users/${userId}/wishlist`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const list = Array.isArray(res.data?.data) ? res.data.data : [];
+      setWishlistCount(list.length);
+    } catch (e) {
+      setWishlistCount(0);
+    }
   };
 
   useEffect(() => {
@@ -36,6 +62,20 @@ export default function Navbar({ className, type }) {
     };
 
     fetchCategories();
+    fetchWishlistCount();
+
+    const onWLChanged = () => fetchWishlistCount();
+    window.addEventListener("wishlist:changed", onWLChanged);
+
+    const onStorage = (e) => {
+      if (e.key === "wishlistUpdatedAt") fetchWishlistCount();
+    };
+    window.addEventListener("storage", onStorage);
+
+    return () => {
+      window.removeEventListener("wishlist:changed", onWLChanged);
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
 
   useEffect(() => {

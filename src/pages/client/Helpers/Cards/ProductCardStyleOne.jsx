@@ -11,6 +11,8 @@ import ReactDOM from "react-dom";
 import { FiShoppingCart } from "react-icons/fi";
 import StarRating from "../StarRating";
 import { notifyCartChanged } from "../cart/cartEvents";
+import { notifyWishlistChanged } from "../wishlist/wishlistEvents";
+
 
 export default function ProductCardStyleOne({ datas, type, onProductClick }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -38,9 +40,9 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
     const bySku = variant.sku?.trim();
     const byAttrs = Array.isArray(variant.attributeValues)
       ? variant.attributeValues
-          .map((av) => av?.value)
-          .filter(Boolean)
-          .join(" / ")
+        .map((av) => av?.value)
+        .filter(Boolean)
+        .join(" / ")
       : "";
     return byName || bySku || byAttrs || "";
   };
@@ -110,8 +112,8 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
     setVariantImages(sortedVariants[0]?.images || []);
     setSelectedImage(
       product.thumbnail ||
-        sortedVariants[0]?.images[0]?.image_url ||
-        "/images/no-image.jpg"
+      sortedVariants[0]?.images[0]?.image_url ||
+      "/images/no-image.jpg"
     );
     setAvgRating(parseFloat(product.averageRating) || 0);
     setRatingCount(parseInt(product.ratingCount) || 0);
@@ -126,8 +128,8 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
       setVariantImages(firstValidVariant.images || []);
       setSelectedImage(
         firstValidVariant.images[0]?.image_url ||
-          product.thumbnail ||
-          "/images/no-image.jpg"
+        product.thumbnail ||
+        "/images/no-image.jpg"
       );
       setAvgRating(parseFloat(firstValidVariant.averageRating) || 0);
       setRatingCount(parseInt(firstValidVariant.ratingCount) || 0);
@@ -147,8 +149,8 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
       setVariantImages(selectedVariant.images || []);
       setSelectedImage(
         selectedVariant.images[0]?.image_url ||
-          product.thumbnail ||
-          "/images/no-image.jpg"
+        product.thumbnail ||
+        "/images/no-image.jpg"
       );
     } else {
       setAvgRating(parseFloat(product.averageRating) || 0);
@@ -240,37 +242,37 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
   } = priceInfo;
 
   // sau các useMemo variants/visibleVariants/validVariants
-const activeVariant = useMemo(
-  () => selectedVariant || validVariants[0] || visibleVariants[0] || null,
-  [selectedVariant, validVariants, visibleVariants]
-);
+  const activeVariant = useMemo(
+    () => selectedVariant || validVariants[0] || visibleVariants[0] || null,
+    [selectedVariant, validVariants, visibleVariants]
+  );
 
-useEffect(() => {
-  if (!product.id) return;
+  useEffect(() => {
+    if (!product.id) return;
 
-  // Không còn biến thể bán thường → reset & thoát
-  if (visibleVariants.length === 0) {
-    setSelectedVariant(null);
-    setVariantImages([]);
-    setSelectedImage(product.thumbnail || "/images/no-image.jpg");
-    return;
-  }
+    // Không còn biến thể bán thường → reset & thoát
+    if (visibleVariants.length === 0) {
+      setSelectedVariant(null);
+      setVariantImages([]);
+      setSelectedImage(product.thumbnail || "/images/no-image.jpg");
+      return;
+    }
 
-  // Nếu selectedVariant không còn hợp lệ (vì bị lọc đấu giá), set sang biến thể khả dụng đầu tiên
-  if (!selectedVariant || !visibleVariants.some(v => v.id === selectedVariant.id)) {
-    const preferred = validVariants[0] || visibleVariants[0];
-    setSelectedVariant(preferred);
-    setVariantImages(preferred?.images || []);
-    setSelectedImage(
-      preferred?.images?.[0]?.image_url ||
-      product.thumbnail ||
-      "/images/no-image.jpg"
-    );
-    setAvgRating(parseFloat(preferred?.averageRating) || 0);
-    setRatingCount(parseInt(preferred?.ratingCount) || 0);
-    if (preferred?.id) checkWishlistStatus(preferred.id);
-  }
-}, [product.id, visibleVariants, validVariants, selectedVariant]);
+    // Nếu selectedVariant không còn hợp lệ (vì bị lọc đấu giá), set sang biến thể khả dụng đầu tiên
+    if (!selectedVariant || !visibleVariants.some(v => v.id === selectedVariant.id)) {
+      const preferred = validVariants[0] || visibleVariants[0];
+      setSelectedVariant(preferred);
+      setVariantImages(preferred?.images || []);
+      setSelectedImage(
+        preferred?.images?.[0]?.image_url ||
+        product.thumbnail ||
+        "/images/no-image.jpg"
+      );
+      setAvgRating(parseFloat(preferred?.averageRating) || 0);
+      setRatingCount(parseInt(preferred?.ratingCount) || 0);
+      if (preferred?.id) checkWishlistStatus(preferred.id);
+    }
+  }, [product.id, visibleVariants, validVariants, selectedVariant]);
 
 
 
@@ -453,9 +455,7 @@ useEffect(() => {
     const userId = decoded?.id;
 
     if (!token || !userId) {
-      toast.error(
-        "Bạn cần đăng nhập để thêm sản phẩm vào danh sách yêu thích."
-      );
+      toast.error("Bạn cần đăng nhập để thêm sản phẩm vào danh sách yêu thích.");
       return;
     }
 
@@ -464,15 +464,13 @@ useEffect(() => {
         userId,
         productVariantId: selectedVariant.id,
       });
-      toast.success(
-        response.data.message || "Đã thêm vào danh sách yêu thích!"
-      );
+      toast.success(response.data.message || "Đã thêm vào danh sách yêu thích!");
       setIsInWishlist(true);
       await checkWishlistStatus(selectedVariant.id);
+      notifyWishlistChanged();
     } catch (error) {
       const errorMessage =
-        error.response?.data?.message ||
-        "Lỗi khi thêm vào danh sách yêu thích.";
+        error.response?.data?.message || "Lỗi khi thêm vào danh sách yêu thích.";
       toast.error(errorMessage);
     }
   };
@@ -488,29 +486,26 @@ useEffect(() => {
     const userId = decoded?.id;
 
     if (!token || !userId) {
-      toast.error(
-        "Bạn cần đăng nhập để xóa sản phẩm khỏi danh sách yêu thích."
-      );
+      toast.error("Bạn cần đăng nhập để xóa sản phẩm khỏi danh sách yêu thích.");
       return;
     }
 
     try {
       const response = await axios.delete(
         `${Constants.DOMAIN_API}/users/${userId}/wishlist/${selectedVariant.id}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.info(response.data.message || "Đã xóa khỏi danh sách yêu thích!");
       setIsInWishlist(false);
       await checkWishlistStatus(selectedVariant.id);
+      notifyWishlistChanged();
     } catch (error) {
       const errorMessage =
-        error.response?.data?.message ||
-        "Lỗi khi xóa khỏi danh sách yêu thích.";
+        error.response?.data?.message || "Lỗi khi xóa khỏi danh sách yêu thích.";
       toast.error(errorMessage);
     }
   };
+
 
   function decodeHtml(html) {
     const txt = document.createElement("textarea");
@@ -537,8 +532,8 @@ useEffect(() => {
         setVariantImages(full.images || []);
         setSelectedImage(
           full.images?.[0]?.image_url ||
-            product.thumbnail ||
-            "/images/no-image.jpg"
+          product.thumbnail ||
+          "/images/no-image.jpg"
         );
         setAvgRating(parseFloat(full.averageRating || 0));
         setRatingCount(parseInt(full.ratingCount || 0));
@@ -630,11 +625,10 @@ useEffect(() => {
                 <div
                   key={img.id || img.image_url}
                   onClick={() => setSelectedImage(img.image_url)}
-                  className={`w-[60px] h-[60px] p-1 border rounded-md cursor-pointer ${
-                    selectedImage === img.image_url
+                  className={`w-[60px] h-[60px] p-1 border rounded-md cursor-pointer ${selectedImage === img.image_url
                       ? "border-blue-500"
                       : "border-gray-200"
-                  } hover:border-blue-400 transition-colors`}
+                    } hover:border-blue-400 transition-colors`}
                 >
                   <img
                     src={img.image_url}
@@ -667,8 +661,8 @@ useEffect(() => {
                     const originalPrice = Number(variant.price || 0);
                     const salePrice = Number(
                       variant.final_price ||
-                        variant.promotion?.discounted_price ||
-                        originalPrice
+                      variant.promotion?.discounted_price ||
+                      originalPrice
                     );
 
                     // SAU ĐÓ MỚI TÍNH KIỂU GIẢM VÀ %
@@ -686,13 +680,12 @@ useEffect(() => {
                     return (
                       <button
                         key={variant.id}
-                        className={`border rounded-md p-2 text-xs text-center transition relative ${
-                          !inStock || inAuction
+                        className={`border rounded-md p-2 text-xs text-center transition relative ${!inStock || inAuction
                             ? "border-gray-300 opacity-50 cursor-not-allowed text-gray-500"
                             : isSelected
-                            ? "border-blue-500 bg-blue-50 text-gray-800"
-                            : "border-gray-300 hover:bg-gray-100 text-gray-800"
-                        }`}
+                              ? "border-blue-500 bg-blue-50 text-gray-800"
+                              : "border-gray-300 hover:bg-gray-100 text-gray-800"
+                          }`}
                         onClick={() => {
                           if (inStock && !inAuction)
                             handleVariantSelect(variant);
@@ -718,8 +711,8 @@ useEffect(() => {
                               {discountTypeOfVariant === "percentage"
                                 ? `-${percentOfVariant}%`
                                 : `-${(
-                                    originalPrice - salePrice
-                                  ).toLocaleString("vi-VN")}₫`}
+                                  originalPrice - salePrice
+                                ).toLocaleString("vi-VN")}₫`}
                             </span>
                           </div>
                         )}
@@ -728,8 +721,8 @@ useEffect(() => {
                           {inAuction
                             ? "Sản phẩm đang trong phiên đấu giá"
                             : inStock
-                            ? `Còn: ${variant.stock}`
-                            : "Hết hàng"}
+                              ? `Còn: ${variant.stock}`
+                              : "Hết hàng"}
                         </p>
                       </button>
                     );
@@ -865,13 +858,12 @@ useEffect(() => {
               <button
                 type="button"
                 onClick={addToCart}
-                className={`flex-1 py-2 bg-blue-600 text-white text-sm font-medium rounded uppercase tracking-wide hover:bg-blue-700 transition-colors duration-200 ${
-                  !hasStock ||
-                  (visibleVariants.length > 0 && !selectedVariant) ||
-                  selectedVariant?.isInAuction
+                className={`flex-1 py-2 bg-blue-600 text-white text-sm font-medium rounded uppercase tracking-wide hover:bg-blue-700 transition-colors duration-200 ${!hasStock ||
+                    (visibleVariants.length > 0 && !selectedVariant) ||
+                    selectedVariant?.isInAuction
                     ? "opacity-50 cursor-not-allowed"
                     : ""
-                }`}
+                  }`}
                 disabled={
                   !hasStock ||
                   (visibleVariants.length > 0 && !selectedVariant) ||
@@ -949,13 +941,12 @@ useEffect(() => {
         <div className="absolute w-full h-10 px-[30px] left-0 top-40 group-hover:top-[85px] transition-all duration-300 ease-in-out z-10">
           <button
             type="button"
-            className={`bg-blue-600 hover:bg-blue-700 text-white w-full h-full flex items-center justify-center gap-2 ${
-              !hasStock ||
-              (visibleVariants.length > 0 && !selectedVariant) ||
-              selectedVariant?.isInAuction
+            className={`bg-blue-600 hover:bg-blue-700 text-white w-full h-full flex items-center justify-center gap-2 ${!hasStock ||
+                (visibleVariants.length > 0 && !selectedVariant) ||
+                selectedVariant?.isInAuction
                 ? "opacity-50 cursor-not-allowed"
                 : ""
-            }`}
+              }`}
             disabled={
               !hasStock ||
               (visibleVariants.length > 0 && !selectedVariant) ||
@@ -990,11 +981,10 @@ useEffect(() => {
             <div className="price-container flex flex-col gap-1">
               <div className="price flex items-center space-x-2">
                 <span
-                  className={`${
-                    displayOriginalPrice > displayPrice
+                  className={`${displayOriginalPrice > displayPrice
                       ? "text-qred"
                       : "text-qblack"
-                  } font-600 text-[18px]`}
+                    } font-600 text-[18px]`}
                 >
                   {Number(displayPrice).toLocaleString("vi-VN", {
                     style: "currency",
