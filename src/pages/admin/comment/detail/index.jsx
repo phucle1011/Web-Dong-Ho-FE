@@ -92,7 +92,7 @@ function CommentDetailPage() {
           <div className="card w-100">
             <div className="card-body p-4">
               <h5 className="card-title fw-semibold mb-4">
-                Chi tiết bình luận theo sản phẩm
+                Chi tiết đánh giá theo sản phẩm
               </h5>
               <div className="table-responsive">
                 <table className="table table-striped align-middle">
@@ -135,7 +135,7 @@ function CommentDetailPage() {
                     ) : (
                       <tr>
                         <td colSpan="7" className="text-center">
-                          Không có bình luận nào
+                          Không có đánh giá nào
                         </td>
                       </tr>
                     )}
@@ -219,7 +219,7 @@ function CommentDetailPage() {
         animation={true}
       >
         <Modal.Header closeButton>
-          <Modal.Title>Xem ảnh bình luận</Modal.Title>
+          <Modal.Title>Xem ảnh đánh giá </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Carousel interval={null} defaultActiveIndex={startIndex}>
@@ -228,7 +228,7 @@ function CommentDetailPage() {
                 <img
                   className="d-block w-100"
                   src={img.image_url}
-                  alt="Bình luận"
+                  alt="đánh giá"
                   style={{ maxHeight: "70vh", objectFit: "contain" }}
                 />
               </Carousel.Item>

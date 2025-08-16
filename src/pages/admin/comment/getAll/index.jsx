@@ -191,20 +191,20 @@ function CommentPage() {
         <div className="col-12 d-flex align-items-stretch">
           <div className="card w-100">
             <div className="card-body p-4">
-              <h5 className="card-title fw-semibold mb-4">Bình luận theo sản phẩm</h5>
+              <h5 className="card-title fw-semibold mb-4">Đánh giá theo sản phẩm</h5>
 
               {/* Tabs */}
               <div className="flex flex-wrap items-center gap-6 border-b border-gray-200 px-6 py-4 mb-4">
                 {[{
                   key: "all", label: "Tất cả sản phẩm"
                 }, {
-                  key: "most_comments", label: "Nhiều bình luận nhất"
+                  key: "most_comments", label: "Nhiều Đánh Giá nhất"
                 }, {
                   key: "highest_rating", label: "Đánh giá cao nhất"
                 }, {
                   key: "lowest_rating", label: "Đánh giá thấp nhất"
                 }, {
-                  key: "reply", label: "Trả lời bình luận", count: unrepliedComments.length, color: "bg-blue-300", textColor: "text-blue-800"
+                  key: "reply", label: "Trả lời Đánh Giá", count: unrepliedComments.length, color: "bg-blue-300", textColor: "text-blue-800"
                 }].map(({ key, label, count, color, textColor }) => (
                   <button
                     key={key}
@@ -240,7 +240,7 @@ function CommentPage() {
                       <tr>
                         <th className="border p-2">#</th>
                         <th className="border p-2">Sản phẩm</th>
-                        <th className="border p-2">Tổng bình luận</th>
+                        <th className="border p-2">Tổng Đánh Giá</th>
                         <th className="border p-2">Trung bình đánh giá</th>
                         <th className="border p-2"></th>
                       </tr>

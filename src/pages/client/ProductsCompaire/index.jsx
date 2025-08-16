@@ -42,31 +42,33 @@ export default function ProductsCompare() {
   const [selectedVariants, setSelectedVariants] = useState(Array(MAX_COMPARE).fill(null));
   const [filteredLists, setFilteredLists] = useState(Array(MAX_COMPARE).fill([]));
   const [allAttributes, setAllAttributes] = useState([]);
-
   useEffect(() => {
     fetch("https://web-dong-ho-be.onrender.com/products/compare")
       .then((res) => res.json())
       .then((data) => {
         const variantList = [];
 
-        data.data.forEach((product) => {
-          product.variants.forEach((variant) => {
-            variantList.push({
-              productId: product.id,
-              productName: product.name,
-              productDescription: product.description,
-              productThumbnail: product.thumbnail,
-              brand: product.brand?.name || "-",
-              averageRating: product.average_rating, 
-              variantId: variant.id,
-              price: variant.price,
-              stock: variant.stock,
-              sku: variant.sku,
-              images: variant.images || [],
-              attributeValues: variant.attributeValues || [],
-            });
-          });
-        });
+    data.data.forEach((product) => {
+  product.variants.forEach((variant) => {
+    if (!variant.isAuction) { 
+      variantList.push({
+        productId: product.id,
+        productName: product.name,
+        productDescription: product.description,
+        productThumbnail: product.thumbnail,
+        brand: product.brand?.name || "-",
+        averageRating: product.average_rating,
+        variantId: variant.id,
+        price: variant.price,
+        stock: variant.stock,
+        sku: variant.sku,
+        images: variant.images || [],
+        attributeValues: variant.attributeValues || [],
+      });
+    }
+  });
+});
+
 
         setVariants(variantList);
         setFilteredLists(Array(MAX_COMPARE).fill(variantList));
