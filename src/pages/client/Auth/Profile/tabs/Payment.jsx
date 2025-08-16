@@ -89,7 +89,7 @@ export default function Payment() {
       setPending(pendingAmount || 0);
       setHasPendingWithdraw(!!wallet.withdrawRequests?.find(r => r.status === "pending" && r.type === "withdraw"));
     } catch (err) {
-      toast.error("Không thể tải thông tin ví.");
+      // toast.error("Không thể tải thông tin ví.");
     }
   };
 
@@ -107,7 +107,7 @@ export default function Payment() {
       setTotalRefunds(pagination.totalRefunds || 0);
       setTotalPages(pagination.totalPages || 1);
     } catch (err) {
-      toast.error("Không thể tải lịch sử ví.");
+      // toast.error("Không thể tải lịch sử ví.");
     }
   };
 
@@ -119,7 +119,7 @@ export default function Payment() {
       setTopups(res.data?.data || []);
       setTotalTopups(res.data?.pagination?.total || 0);
     } catch (err) {
-      toast.error("Không thể tải lịch sử nạp tiền.");
+      // toast.error("Không thể tải lịch sử nạp tiền.");
     }
   };
 
