@@ -590,19 +590,19 @@ function PromotionCreate() {
           />
         </div>
 
-         <div className="md:col-span-2 mt-6 flex gap-6">
-        <button type="submit" className="bg-[#073272] text-white px-6 py-2 rounded">
-          Tạo khuyến mãi
-        </button>
+        <div className="md:col-span-2 mt-6 flex gap-6">
+          <button type="submit" className="bg-[#073272] text-white px-6 py-2 rounded">
+            Tạo khuyến mãi
+          </button>
 
-        <button
-          type="button"
-          onClick={() => navigate("/admin/promotions/getAll")}
-          className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600"
-        >
-          Quay lại
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => navigate("/admin/promotions/getAll")}
+            className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600"
+          >
+            Quay lại
+          </button>
+        </div>
 
       </form>
     </div>
