@@ -21,7 +21,7 @@ function WishlistList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const limit = 10;
 
-  // Giữ lại mỗi icon menu (download)
+  // Chỉ giữ icon menu (download)
   const chartToolbarMenuOnly = useMemo(() => ({
     toolbar: {
       show: true,
@@ -34,7 +34,7 @@ function WishlistList() {
     },
   }), []);
 
-  // Rút gọn giữa, giữ đuôi (ví dụ: "Đồng hồ O…GL-D")
+  // Rút gọn giữa, giữ đuôi (VD: "Đồng hồ O…GL-D")
   const middleEllipsis = (s, max = 18, tail = 6) => {
     const str = String(s ?? "");
     if (str.length <= max) return str;
@@ -57,7 +57,6 @@ function WishlistList() {
     [sanitizedMost]
   );
 
-  // Tổng % luôn = 100.0
   const correctedPercents = useMemo(() => {
     const total = pieSeries.reduce((a, b) => a + (+b || 0), 0);
     if (!total) return [];
@@ -106,34 +105,16 @@ function WishlistList() {
 
   const barSeries = barData.series;
 
-  // Tính yMax đẹp (1/2/5 * 10^n) + 10% headroom
-  const niceCeil = (n) => {
-    if (n <= 0) return 5;
-    const x = n * 1.1; // headroom
-    const pow = Math.pow(10, Math.floor(Math.log10(x)));
-    const norm = x / pow;
-    let nice = 1;
-    if (norm <= 1) nice = 1;
-    else if (norm <= 2) nice = 2;
-    else if (norm <= 5) nice = 5;
-    else nice = 10;
-    return nice * pow;
-  };
-
+  // Max theo dữ liệu (tối thiểu 5 để đồ thị đẹp)
   const rawMax = useMemo(() => {
     const arr = (barSeries?.[0]?.data || []).map(Number);
     return arr.length ? Math.max(...arr) : 0;
   }, [barSeries]);
 
-  const yMax = useMemo(() => {
-    if (rawMax <= 10) return Math.max(5, Math.ceil(rawMax)); // nhỏ thì để bước 1
-    return niceCeil(rawMax);
-  }, [rawMax]);
+  const yMaxInt = useMemo(() => Math.max(5, Math.ceil(rawMax)), [rawMax]);
 
-  const tickAmount = useMemo(() => {
-    // nhỏ (<=10): 0..yMax (bước 1). Lớn: 6 tick để đỡ rối
-    return yMax <= 10 ? yMax + 1 : 6;
-  }, [yMax]);
+  // Với trục nhỏ (≤10) -> tick nguyên 0..yMaxInt; lớn hơn -> 6 tick cho đỡ rối
+  const tickAmountInt = useMemo(() => (yMaxInt <= 10 ? yMaxInt : 6), [yMaxInt]);
 
   const barOptions = useMemo(() => ({
     chart: { type: 'bar', height: 350, ...chartToolbarMenuOnly },
@@ -150,27 +131,21 @@ function WishlistList() {
     },
     tooltip: {
       x: { formatter: (_v, { dataPointIndex }) => categoriesRecent[dataPointIndex] || '(Không tên)' },
-      y: {
-        formatter: (val) => new Intl.NumberFormat('vi-VN').format(val) + ' lượt'
-      }
+      y: { formatter: (val) => new Intl.NumberFormat('vi-VN').format(val) + ' lượt' }
     },
     dataLabels: { enabled: false },
     yaxis: {
       min: 0,
-      max: yMax,
-      tickAmount,
-      forceNiceScale: true,
+      max: yMaxInt,              // ép max là số nguyên
+      tickAmount: tickAmountInt, // <=10: 0..yMaxInt (bước 1). >10: 6 tick
+      forceNiceScale: false,     // tránh chia thập phân lẻ
+      decimalsInFloat: 0,        // hiển thị số nguyên
       labels: {
-        formatter: (val) => {
-          // ≥ 1000: rút gọn 1,2 N | còn lại: số nguyên có phân cách
-          if (yMax >= 1000) {
-            return new Intl.NumberFormat('vi-VN', { notation: 'compact', compactDisplay: 'short' }).format(val);
-          }
-          return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(val);
-        }
+        formatter: (val) =>
+          new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(val)
       }
     }
-  }), [barData, categoriesRecent, chartToolbarMenuOnly, yMax, tickAmount]);
+  }), [barData, categoriesRecent, chartToolbarMenuOnly, yMaxInt, tickAmountInt]);
 
   // ---------- Effects ----------
   useEffect(() => { fetchGroupedWishlist(currentPage); }, [currentPage, appliedSearchTerm]);
@@ -229,7 +204,7 @@ function WishlistList() {
             <Chart options={pieOptions} series={pieSeries} type="pie" width="100%" height={350} />
           </div>
           <div className="border p-4 rounded-md bg-gray-50">
-            <Chart options={barOptions} series={barSeries} type="bar" width="100%" height={350} />
+            <Chart options={barOptions} series={barData.series} type="bar" width="100%" height={350} />
           </div>
         </div>
 

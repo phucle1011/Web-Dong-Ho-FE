@@ -84,12 +84,18 @@ function UserList() {
     };
 
     const handleStatusChange = (userId, newStatus) => {
+        const u = users.find(u => u.id === userId);
+        if (u?.role === 'admin') {
+            toast.warn("Không thể thay đổi trạng thái tài khoản admin.");
+            return;
+        }
         setSelectedUserId(userId);
         setSelectedNewStatus(newStatus);
         setReasonOption('');
         setCustomReason('');
         setShowReasonModal(true);
     };
+
 
     const handleSubmitReason = async () => {
         const finalReason = reasonOption === 'Khác' ? customReason : reasonOption;
@@ -190,7 +196,7 @@ function UserList() {
                                     flex items-center gap-2 border px-3 py-1.5 rounded-md text-sm transition-all
                                     ${filterStatus === key ? "bg-[#073272] text-white" : "bg-white text-gray-700"}
                                 `}
-                            >
+                        >
                             {label}
                             <span className={`px-2 py-0.5 rounded ${color} ${textColor} text-xs font-semibold`}>
                                 {userCounts[countKey] ?? 0}
@@ -259,15 +265,24 @@ function UserList() {
                                             </td>
                                             <td className="p-2 border capitalize whitespace-nowrap">{user.role}</td>
                                             <td className="p-2 border capitalize">
-                                                <select
-                                                    value={user.status}
-                                                    onChange={(e) => handleStatusChange(user.id, e.target.value)}
-                                                    className="border rounded px-2 py-1"
-                                                >
-                                                    <option value="active">Hoạt động</option>
-                                                    {/* <option value="inactive">Ngưng hoạt động</option> */}
-                                                    <option value="locked">Bị khóa</option>
-                                                </select>
+                                                {(() => {
+                                                    const isAdmin = user.role === 'admin';
+                                                    return (
+                                                        <select
+                                                            value={user.status}
+                                                            onChange={(e) => {
+                                                                if (isAdmin) return; // chặn FE
+                                                                handleStatusChange(user.id, e.target.value);
+                                                            }}
+                                                            disabled={isAdmin}
+                                                            title={isAdmin ? "Không thể thay đổi trạng thái tài khoản admin" : "Thay đổi trạng thái"}
+                                                            className={`border rounded px-2 py-1 ${isAdmin ? "bg-gray-100 text-gray-500 cursor-not-allowed opacity-60" : ""}`}
+                                                        >
+                                                            <option value="active">Hoạt động</option>
+                                                            <option value="locked">Bị khóa</option>
+                                                        </select>
+                                                    );
+                                                })()}
                                             </td>
                                             <td className="p-2 border text-center">
                                                 <Link
