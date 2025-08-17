@@ -70,30 +70,40 @@ export default function Wishlist({ wishlist = true }) {
     }
 
     try {
-      const payload = wishlistItems.map((item) => ({
-        product_variant_id: item.product_variant_id,
-        quantity: 1,
-      }));
-
-      const response = await axios.post(
+      // BE không cần payload, nhưng vẫn gửi OK; ở đây gọi đúng spec mới:
+      const { data } = await axios.post(
         `${Constants.DOMAIN_API}/users/${userId}/wishlist/add-to-cart`,
-        payload,
+        {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      toast.success(response.data.message || "Đã thêm tất cả sản phẩm vào giỏ hàng!");
+      const successes = data?.data?.successes?.length || 0;
+      const failures = data?.data?.failures || [];
 
-      // 🔁 Sau khi thêm tất cả, xoá hết khỏi wishlist
-      setWishlistItems([]);
-      setSelectedItems([]);
+      if (successes > 0) toast.success(`Đã thêm ${successes} sản phẩm vào giỏ hàng.`);
+
+      if (failures.length > 0) {
+        const msgs = failures.map((f, i) => {
+          let extra = '';
+          if (f.meta?.available !== undefined) extra = ` (còn ${f.meta.available})`;
+          return `${i + 1}. ${f.message}${extra}`;
+        });
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Một số sản phẩm không thể thêm',
+          html: `<div style="text-align:left">${msgs.join('<br/>')}</div>`,
+        });
+      }
+
+      await fetchWishlist();
     } catch (error) {
-      const errorMessage =
-        error.response?.data?.message || "Lỗi khi thêm sản phẩm vào giỏ hàng.";
+      const errorMessage = error.response?.data?.message || "Lỗi khi thêm sản phẩm vào giỏ hàng.";
       toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
     }
   };
+
 
   const handleAddSelectedToCart = async () => {
     if (isProcessing) return;
@@ -112,33 +122,44 @@ export default function Wishlist({ wishlist = true }) {
     }
 
     try {
-      await Promise.all(
+      const results = await Promise.allSettled(
         selectedItems.map((variantId) =>
           axios.post(
             `${Constants.DOMAIN_API}/wishlist/add-single-to-cart`,
-            {
-              userId,
-              productVariantId: variantId,
-              quantity: 1,
-            },
+            { userId, productVariantId: variantId, quantity: 1 },
             { headers: { Authorization: `Bearer ${token}` } }
           )
         )
       );
 
-      toast.success(`Đã thêm ${selectedItems.length} sản phẩm vào giỏ hàng!`);
+      const successes = results.filter(r => r.status === 'fulfilled').length;
+      const failures = results
+        .filter(r => r.status === 'rejected')
+        .map(r => {
+          const data = r.reason?.response?.data;
+          return data?.message
+            ? `${data.message}${data.meta?.available !== undefined ? ` (còn ${data.meta.available})` : ''}`
+            : 'Lỗi không xác định';
+        });
 
-      // ✅ Gọi lại API để làm mới danh sách wishlist sau khi server đã xoá
-      await fetchWishlist();
+      if (successes > 0) {
+        toast.success(`Đã thêm ${successes}/${selectedItems.length} sản phẩm vào giỏ hàng.`);
+      }
+      if (failures.length > 0) {
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Không thể thêm một số sản phẩm',
+          html: `<div style="text-align:left">${failures.map((m, i) => `<div>${i + 1}. ${m}</div>`).join('')}</div>`,
+        });
+      }
+
+      await fetchWishlist(); // refresh
     } catch (error) {
-      const msg =
-        error.response?.data?.message || "Lỗi khi thêm sản phẩm vào giỏ hàng.";
-      toast.error(msg);
+      toast.error(error?.response?.data?.message || "Lỗi khi thêm sản phẩm vào giỏ hàng.");
     } finally {
       setIsProcessing(false);
     }
   };
-
 
 
 
