@@ -537,7 +537,7 @@ export default function OrderTab() {
                   <th className="text-center py-3 px-2 whitespace-nowrap">Trạng thái</th>
                   <th className="text-center py-3 px-2 whitespace-nowrap">Tổng tiền</th>
                   <th className="text-center py-3 px-2 whitespace-nowrap">Thanh toán</th>
-                  <th className="text-center py-3 px-2 whitespace-nowrap">Xem chi tiết</th>
+                  <th className="text-center py-3 px-2 whitespace-nowrap"></th>
                 </tr>
               </thead>
               <tbody>
@@ -576,7 +576,7 @@ export default function OrderTab() {
                         </td>
                         <td className="text-center py-4 px-2 whitespace-nowrap">{order.payment_method}</td>
                         <td className="py-4 text-center">
-                          <div className="flex flex-wrap gap-2 justify-center">
+                          <div className="flex flex-nowrap gap-2 justify-center">
                             <button
                               onClick={() => {
                                 const isOpeningNew = expandedOrderId !== order.id;
@@ -594,38 +594,40 @@ export default function OrderTab() {
                               )}
                             </button>
 
-                            {/* {order.status === "pending" && (
                             <button
-                              onClick={() => setSelectedOrder(order)}
-                              className="w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow transition"
+                              onClick={() => {
+                                if (order.status === "pending" && !isAuctionOrder) {
+                                  setSelectedOrder(order);
+                                }
+                              }}
+                              className={`w-8 h-8 text-white rounded-full flex items-center justify-center shadow transition
+        ${order.status === "pending" && !isAuctionOrder
+                                  ? "bg-red-500 hover:bg-red-600 cursor-pointer"
+                                  : "bg-gray-300 cursor-not-allowed opacity-50"}`}
                               title="Huỷ đơn"
                               type="button"
+                              disabled={order.status !== "pending" || isAuctionOrder}
                             >
                               <FaTrashAlt />
                             </button>
-                          )} */}
 
-                            {order.status === "pending" && !isAuctionOrder && (
-                              <button
-                                onClick={() => setSelectedOrder(order)}
-                                className="w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow transition"
-                                title="Huỷ đơn"
-                                type="button"
-                              >
-                                <FaTrashAlt />
-                              </button>
-                            )}
+                            <button
+                              onClick={() => {
+                                if (!isAuctionOrder) {
+                                  handleReorder(order);
+                                }
+                              }}
+                              className={`w-8 h-8 text-white rounded-full flex items-center justify-center shadow transition
+    ${!isAuctionOrder
+                                  ? "bg-green-500 hover:bg-green-600 cursor-pointer"
+                                  : "bg-gray-300 cursor-not-allowed opacity-50"}`}
+                              title="Đặt lại đơn"
+                              type="button"
+                              disabled={isAuctionOrder}
+                            >
+                              <FaRedo />
+                            </button>
 
-                            {["cancelled", "completed"].includes(order.status) && (
-                              <button
-                                onClick={() => handleReorder(order)}
-                                className="w-8 h-8 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center shadow transition"
-                                title="Đặt lại đơn"
-                                type="button"
-                              >
-                                <FaRedo />
-                              </button>
-                            )}
                           </div>
                         </td>
                       </tr>
@@ -703,64 +705,64 @@ export default function OrderTab() {
                                                 currency: "VND",
                                               })}
                                             </td>
-<td className="p-2">
-  {order.status === "completed" ? (
-    item.auction_id ? (   // 🚫 nếu có auction_id thì cấm đánh giá
-      <span className="text-gray-400 italic">
-        Sản phẩm đấu giá là duy nhất không thể đánh giá
-      </span>
-    ) : (
-      <button
-        className="text-blue-500 hover:text-blue-900 transition-colors"
-        onClick={() => {
-          const product = item.variant?.product;
-          const productId = product?.id;
-          const deliveredAt = new Date(item.updated_at);
-          const currentDate = new Date();
-          const daysPassed =
-            (currentDate - deliveredAt) / (1000 * 60 * 60 * 24);
+                                            <td className="p-2">
+                                              {order.status === "completed" ? (
+                                                item.auction_id ? (   // 🚫 nếu có auction_id thì cấm đánh giá
+                                                  <span className="text-gray-400 italic">
+                                                    Sản phẩm đấu giá là duy nhất không thể đánh giá
+                                                  </span>
+                                                ) : (
+                                                  <button
+                                                    className="text-blue-500 hover:text-blue-900 transition-colors"
+                                                    onClick={() => {
+                                                      const product = item.variant?.product;
+                                                      const productId = product?.id;
+                                                      const deliveredAt = new Date(item.updated_at);
+                                                      const currentDate = new Date();
+                                                      const daysPassed =
+                                                        (currentDate - deliveredAt) / (1000 * 60 * 60 * 24);
 
-          if (daysPassed > 7) {
-            toast.error("Thời gian đánh giá đã hết. Vượt quá 7 ngày kể từ khi giao hàng.");
-            return;
-          }
+                                                      if (daysPassed > 7) {
+                                                        toast.error("Thời gian đánh giá đã hết. Vượt quá 7 ngày kể từ khi giao hàng.");
+                                                        return;
+                                                      }
 
-          const editedOnce = item.comment && Number(item.comment.edited) === 1;
+                                                      const editedOnce = item.comment && Number(item.comment.edited) === 1;
 
-          if (item.comment) {
-            if (editedOnce) {
-              navigate(`/product#comment-${item.comment.id}`, {
-                state: { productId: product.id },
-              });
-            } else {
-              sessionStorage.setItem("pendingReviewOrderDetailId", item.id);
-              navigate(`/product#review`, {
-                state: { productId: product.id },
-              });
-            }
-          } else {
-            sessionStorage.setItem("pendingReviewOrderDetailId", item.id);
-            navigate(`/product#review`, {
-              state: { productId: product.id },
-            });
-          }
-        }}
-      >
-        {item.comment ? (
-          Number(item.comment.edited) === 1 ? (
-            <span>Xem đánh giá</span>
-          ) : (
-            <span>Chỉnh sửa đánh giá</span>
-          )
-        ) : (
-          <span>Đánh giá</span>
-        )}
-      </button>
-    )
-  ) : (
-    <span className="text-gray-400 italic">Chưa thể đánh giá</span>
-  )}
-</td>
+                                                      if (item.comment) {
+                                                        if (editedOnce) {
+                                                          navigate(`/product#comment-${item.comment.id}`, {
+                                                            state: { productId: product.id },
+                                                          });
+                                                        } else {
+                                                          sessionStorage.setItem("pendingReviewOrderDetailId", item.id);
+                                                          navigate(`/product#review`, {
+                                                            state: { productId: product.id },
+                                                          });
+                                                        }
+                                                      } else {
+                                                        sessionStorage.setItem("pendingReviewOrderDetailId", item.id);
+                                                        navigate(`/product#review`, {
+                                                          state: { productId: product.id },
+                                                        });
+                                                      }
+                                                    }}
+                                                  >
+                                                    {item.comment ? (
+                                                      Number(item.comment.edited) === 1 ? (
+                                                        <span>Xem đánh giá</span>
+                                                      ) : (
+                                                        <span>Chỉnh sửa đánh giá</span>
+                                                      )
+                                                    ) : (
+                                                      <span>Đánh giá</span>
+                                                    )}
+                                                  </button>
+                                                )
+                                              ) : (
+                                                <span className="text-gray-400 italic">Chưa thể đánh giá</span>
+                                              )}
+                                            </td>
 
                                           </tr>
                                         ))}

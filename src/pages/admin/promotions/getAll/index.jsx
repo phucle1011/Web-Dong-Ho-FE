@@ -33,6 +33,8 @@ function PromotionGetAll() {
     const [filterStatus, setFilterStatus] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
+    const [usedCounts, setUsedCounts] = useState({});
+
     const [statusCounts, setStatusCounts] = useState({
         all: 0,
         active: 0,
@@ -200,6 +202,19 @@ function PromotionGetAll() {
         { key: "special", label: "Mã giảm đặc biệt", color: "bg-purple-300", textColor: "text-purple-800" },
     ];
 
+    const getUsageCounts = async () => {
+  try {
+    const res = await axios.get(`${Constants.DOMAIN_API}/admin/promotions/usage-count`);
+    const usageMap = {};
+    res.data.data.forEach(item => {
+      usageMap[item.promotion_id] = parseInt(item.used_count);
+    });
+    setUsedCounts(usageMap);
+  } catch (err) {
+    console.error('Lỗi lấy usage count:', err);
+  }
+};
+
     return (
         <div className="container mx-auto p-4 bg-white shadow-md rounded">
             <div className="flex justify-between items-center mb-6">
@@ -316,12 +331,13 @@ function PromotionGetAll() {
                             <th className="border p-2">Tên</th>
                             <th className="border p-2">% Giảm</th>
                             <th className="border p-2">Lượt</th>
+                            <th className="border p-2">Đã sử dụng</th>
                             <th className="border p-2">Bắt đầu</th>
                             <th className="border p-2">Kết thúc</th>
                             <th className="border p-2">Áp dụng</th>
                             <th className="border p-2">Trạng thái</th>
                             {/* <th className="border p-2">Khách đặc biệt</th> */}
-                            <th className="border p-2">Hành động</th>
+                            <th className="border p-2"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -338,6 +354,7 @@ function PromotionGetAll() {
                                         })}`}
                                 </td>
                                 <td className="border p-2 text-center">{promo.quantity > 0 ? promo.quantity : "Hết lượt"}</td>
+                                <td className="border p-2 text-center">{promo.used_count || 0}</td>
                                 <td className="border p-2 text-center">{formatDate(promo.start_date)}</td>
                                 <td className="border p-2 text-center">{formatDate(promo.end_date)}</td>
                                 <td className="border p-2 text-center">
