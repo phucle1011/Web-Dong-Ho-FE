@@ -147,7 +147,7 @@ function Aside() {
             <li className={`sidebar-item ${location.pathname === "/admin/comments/getAll" ? "active" : ""}`}>
               <Link className="sidebar-link" to="/admin/comments/getAll">
                 <FaCommentDots />
-                <span className="hide-menu">Quản lý bình luận </span>
+                <span className="hide-menu">Quản lý đánh giá </span>
               </Link>
             </li>
             <li className={`sidebar-item ${location.pathname === "/admin/notifications/getAll" ? "active" : ""}`}>
