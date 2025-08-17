@@ -43,7 +43,7 @@ function UserList() {
             const res = await axios.get(url, { params });
 
             if (res.data.status === 200) {
-                setUsers(res.data.data);
+                setUsers((res.data.data || []).filter(u => u.role !== 'admin'));
                 setTotalPages(res.data.totalPages || 1);
                 setSearchError('');
                 if (res.data.counts) setUserCounts(res.data.counts);
@@ -239,7 +239,7 @@ function UserList() {
                                     <th className="p-2 border">Email</th>
                                     <th className="p-2 border">Điện thoại</th>
                                     <th className="p-2 border">Avatar</th>
-                                    <th className="p-2 border">Vai trò</th>
+                                    {/* <th className="p-2 border">Vai trò</th> */}
                                     <th className="p-2 border">Trạng thái</th>
                                     <th className="p-2 border"></th>
                                 </tr>
@@ -263,7 +263,7 @@ function UserList() {
                                                     <span className="text-gray-400">Không có avatar</span>
                                                 )}
                                             </td>
-                                            <td className="p-2 border capitalize whitespace-nowrap">{user.role}</td>
+                                            {/* <td className="p-2 border capitalize whitespace-nowrap">{user.role}</td> */}
                                             <td className="p-2 border capitalize">
                                                 {(() => {
                                                     const isAdmin = user.role === 'admin';

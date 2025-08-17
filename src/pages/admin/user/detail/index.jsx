@@ -541,7 +541,7 @@ function UserDetail() {
                 />
               </div>
 
-              <div className="flex items-center gap-2">
+              {/* <div className="flex items-center gap-2">
                 <strong className="text-gray-600 w-28 shrink-0">Vai trò:</strong>
                 <input
                   type="text"
@@ -549,7 +549,7 @@ function UserDetail() {
                   value={user.role || ""}
                   readOnly
                 />
-              </div>
+              </div> */}
 
               <div className="flex items-center gap-2">
                 <strong className="text-gray-600 w-28 shrink-0">Ngày tạo:</strong>
