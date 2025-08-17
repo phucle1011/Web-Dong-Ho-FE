@@ -85,6 +85,25 @@ export default function AuctionRoom() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
+        if (!activeAuction?.start_time) return;
+
+        const startAt = parseDbLocal(activeAuction.start_time);
+        const now = new Date();
+        const delay = startAt - now;
+
+        if (delay <= 0 && activeAuction?.status !== 'active') {
+            fetchActiveAuction();
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            fetchActiveAuction();
+        }, delay + 1000);
+
+        return () => clearTimeout(timer);
+    }, [activeAuction?.start_time, activeAuction?.status]);
+
+    useEffect(() => {
         setOverridePrice(newBidPrice);
     }, [newBidPrice]);
 
@@ -134,38 +153,6 @@ export default function AuctionRoom() {
             auth: { token: localStorage.getItem("token") },
         });
         socketRef.current = s;
-
-        // const onWinner = (payload) => {
-        //     if (String(payload.auctionId) === String(currentAuctionIdRef.current)) {
-        //         toast.success(
-        //             `Chúc mừng ${payload.winner.userName} đã chiến thắng phiên đấu giá ${payload.winner.productName} với giá ${formatVnd(payload.winner.amount)}!`,
-        //             {
-        //                 position: "top-center",
-        //                 autoClose: 10000,
-        //                 hideProgressBar: false,
-        //                 closeOnClick: true,
-        //                 pauseOnHover: true,
-        //                 draggable: true,
-        //                 progress: undefined,
-        //                 theme: "light",
-        //             }
-        //         );
-        //     } else {
-        //         toast.info(
-        //             `Người dùng ${payload.winner.userName} vừa chiến thắng phiên đấu giá ${payload.winner.productName}!`,
-        //             {
-        //                 position: "top-center",
-        //                 autoClose: 8000,
-        //                 hideProgressBar: false,
-        //                 closeOnClick: true,
-        //                 pauseOnHover: true,
-        //                 draggable: true,
-        //                 progress: undefined,
-        //                 theme: "light",
-        //             }
-        //         );
-        //     }
-        // };
 
         const onStatus = (payload) => {
             const isCurrent = String(payload.auctionId) === String(currentAuctionIdRef.current);
@@ -278,21 +265,6 @@ export default function AuctionRoom() {
         const startAt = parseDbLocal(activeAuction.start_time);
         const endAt = parseDbLocal(activeAuction.end_time);
 
-        // const tick = () => {
-        //     const now = new Date();
-        //     if (now < startAt) {
-        //         const ms = startAt - now;
-        //         setCountdown({ label: "Bắt đầu sau", text: formatDuration(ms), ms });
-        //         return;
-        //     }
-        //     if (now >= startAt && now < endAt) {
-        //         const ms = endAt - now;
-        //         setCountdown({ label: "Kết thúc sau", text: formatDuration(ms), ms });
-        //         return;
-        //     }
-        //     setCountdown({ label: "Đã kết thúc", text: "00:00:00", ms: 0 });
-        // };
-
         const tick = () => {
             const now = new Date();
             if (now < startAt) {
@@ -303,6 +275,9 @@ export default function AuctionRoom() {
             if (now >= startAt && now < endAt) {
                 const ms = endAt - now;
                 setCountdown({ label: "Kết thúc sau", text: formatDuration(ms), ms });
+                if (activeAuction?.status !== 'active') {
+                    fetchActiveAuction();
+                }
                 return;
             }
 
@@ -759,6 +734,24 @@ export default function AuctionRoom() {
         isCooldown ||
         Number(bidValue || 0) < Number(minAllowed);
 
+    useEffect(() => {
+        const onVisible = () => {
+            if (document.visibilityState === 'visible') {
+                fetchActiveAuction();
+            }
+        };
+        document.addEventListener('visibilitychange', onVisible);
+        return () => document.removeEventListener('visibilitychange', onVisible);
+    }, []);
+
+    useEffect(() => {
+        if (activeAuction) return;
+        const itv = setInterval(() => {
+            fetchActiveAuction();
+        }, 10000); // 10s
+        return () => clearInterval(itv);
+    }, [activeAuction]);
+
     return (
         <Layout>
             <style>
@@ -1155,8 +1148,8 @@ export default function AuctionRoom() {
                                     disabled={isInvalidBid || isSubmitting}
                                     className={`mt-4 w-full h-12 rounded-full font-semibold shadow
                                      ${(isCooldown || isSubmitting)
-                                                ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                                                : 'bg-blue-200 hover:bg-blue-300 text-blue-900'}
+                                            ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                                            : 'bg-blue-200 hover:bg-blue-300 text-blue-900'}
                                     `}
                                 >
                                     {isCooldown
