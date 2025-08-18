@@ -355,7 +355,7 @@ function AuctionProductDetail() {
               </div>
               <div className="px-6 pb-6 text-center">
                 <Link
-                  to={{ pathname: "/AcutionsDetail" }}
+                  to={{ pathname:  `/AcutionsDetail/${auction.variant?.product?.slug}` }}
                   state={{
                     productId: activeAuction.variant.product.id,
                     auctionId: activeAuction.id,
@@ -478,7 +478,7 @@ function AuctionProductDetail() {
                           </div>
 
                           <Link
-                            to={{ pathname: "/AcutionsDetail" }}
+                            to={{ pathname:  `/AcutionsDetail/${auction.variant?.product?.slug}` }}
                             state={{ productId: auction.variant?.product?.id, auctionId: auction.id }}
                             className="w-full block text-center py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg font-semibold shadow hover:from-blue-600 hover:to-indigo-700 transition"
                           >
@@ -602,7 +602,7 @@ function AuctionProductDetail() {
                           </div>
 
                           <Link
-                            to={{ pathname: "/AcutionsDetail" }}
+                            to={{ pathname: `/AcutionsDetail/${auction.variant?.product?.slug}` }}
                             state={{ productId: auction.variant?.product?.id, auctionId: auction.id }}
                             className="w-full block text-center py-2 bg-gradient-to-r from-blue-500 to-indigo-600 
 text-white rounded-lg font-semibold shadow hover:from-blue-600 hover:to-indigo-700 transition"

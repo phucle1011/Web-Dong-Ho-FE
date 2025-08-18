@@ -38,6 +38,7 @@ export default function ProductView({ className, reportHandler }) {
   const { productId } = state || {};
   const [showFullShortDesc, setShowFullShortDesc] = useState(false);
   const SHORT_DESC_LIMIT = 30;
+const { slug } = useParams();
 
   useEffect(() => {
     if (variantImages.length > 0) {
@@ -50,42 +51,52 @@ export default function ProductView({ className, reportHandler }) {
   }, [currentImageIndex, variantImages]);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-    async function fetchProduct() {
-      try {
-        setLoading(true);
-        const res = await axios.get(
-          `${Constants.DOMAIN_API}/products/${productId}/variants`
-        );
-        const { product } = res.data;
+  window.scrollTo(0, 0);
+  async function fetchProduct() {
+    try {
+      setLoading(true);
+      const res = await axios.get(
+        `${Constants.DOMAIN_API}/products/${slug}/variants`
+      );
+      const { product } = res.data;
 
-        setProductData(product);
-        setVariants(product.variants);
-        setImages(product.variantImages);
-        setAllVariants(product.variants);
-        if (product.variants.length > 0) {
-          const firstVariant = product.variants[0];
-          setSelectedVariant(firstVariant);
-          setFilteredVariants([firstVariant]);
-          const firstImages = firstVariant.images || [];
-          setVariantImages(firstImages);
-          if (firstImages.length > 0) {
-            setSelectedImage(firstImages[0].image_url);
-          } else if (product.thumbnail) {
-            setSelectedImage(product.thumbnail);
-          }
-          await checkWishlistStatus(firstVariant.id);
+      setProductData(product);
+      setVariants(product.variants);
+      setImages(product.variantImages);
+      setAllVariants(product.variants);
+
+      if (product.variants.length > 0) {
+        const firstVariant = product.variants[0];
+        setSelectedVariant(firstVariant);
+        setFilteredVariants([firstVariant]);
+        const firstImages = firstVariant.images || [];
+        setVariantImages(firstImages);
+
+        if (firstImages.length > 0) {
+          setSelectedImage(firstImages[0].image_url);
+        } else if (product.thumbnail) {
+          setSelectedImage(product.thumbnail);
         }
-        const firstImage = product.thumbnail;
-        if (firstImage) setSelectedImage(firstImage);
-      } catch (err) {
-        setError(err.message || "Không thể tải thông tin sản phẩm");
-      } finally {
-        setLoading(false);
+
+        await checkWishlistStatus(firstVariant.id);
       }
-    }
-    fetchProduct();
-  }, [productId]);
+
+      const firstImage = product.thumbnail;
+      if (firstImage) setSelectedImage(firstImage);
+    } catch (err) {
+  const msg =
+    err.response?.data?.message || // lấy message từ BE
+    err.message || 
+    "Không thể tải thông tin sản phẩm";
+  setError(msg);
+} finally {
+  setLoading(false);
+}
+
+  }
+  fetchProduct();
+}, [slug]);
+
 
   useEffect(() => {
     if (selectedVariant) {

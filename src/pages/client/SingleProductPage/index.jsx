@@ -7,7 +7,7 @@ import ProductView from "./ProductView";
 import ProductReviewSection from "./Reviews";
 import SallerInfo from "./SallerInfo";
 import axios from "axios";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate ,useParams } from "react-router-dom";
 import Constants from "../../../Constants";
 import { toast } from "react-toastify";
 
@@ -35,10 +35,11 @@ export default function SingleProductPage() {
   const [description, setDescription] = useState(""); // <- nên dùng string thay vì []
   const [isExpanded, setIsExpanded] = useState(false);
   const [isOverflowing, setIsOverflowing] = useState(false);
+const { slug } = useParams();
 
   // --- Fetch dữ liệu sản phẩm + sản phẩm tương tự ---
   useEffect(() => {
-    if (!productId) {
+    if (!slug) {
       toast.error("Thiếu thông tin sản phẩm!");
       navigate("/all-products");
       return;
@@ -46,7 +47,7 @@ export default function SingleProductPage() {
 
     // Chi tiết / mô tả
     axios
-      .get(`${Constants.DOMAIN_API}/products/${productId}/variants`)
+      .get(`${Constants.DOMAIN_API}/products/${slug}/variants`)
       .then((res) => {
         // tuỳ API, bạn chọn đường đúng:
         const desc =
@@ -63,14 +64,14 @@ export default function SingleProductPage() {
 
     // Sản phẩm tương tự
     axios
-      .get(`${Constants.DOMAIN_API}/products/${productId}/similar`)
+      .get(`${Constants.DOMAIN_API}/products/${slug}/similar`)
       .then((res) => {
         setRelatedProducts(res?.data?.data ?? []);
       })
       .catch((err) => {
         console.error("Lỗi khi gọi API sản phẩm tương tự:", err);
       });
-  }, [productId, navigate]);
+  }, [slug, navigate]);
 
   // --- Điều hướng review qua hash ---
   useEffect(() => {
