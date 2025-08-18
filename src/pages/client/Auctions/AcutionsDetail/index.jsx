@@ -16,11 +16,11 @@ export default function AuctionsDetail() {
 
   const { productId: productIdFromState, auctionId: auctionIdFromState } = state || {};
   const {
-    productId: productIdFromParams,
+    slug: productSlugFromParams,
     auctionId: auctionIdFromParams,
   } = useParams();
 
-  const productId = productIdFromState || productIdFromParams;
+  const productId =   productSlugFromParams;
   const auctionId = auctionIdFromState || auctionIdFromParams;
 
   const [loading, setLoading] = useState(false);

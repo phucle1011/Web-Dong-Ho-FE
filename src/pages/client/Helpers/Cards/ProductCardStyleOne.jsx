@@ -960,11 +960,12 @@ function computePricing(variant) {
       toast.error("Sản phẩm không hợp lệ!");
       return;
     }
-    navigate("/product", {
-      state: {
-        productId: product.id,
-      },
-    });
+    navigate(`/product/${product.slug}`, {
+  state: {
+    productId: product.id,
+  },
+});
+
   };
 
   return (

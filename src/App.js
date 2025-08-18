@@ -147,14 +147,14 @@ const AppRoutes = () => {
           <Route path="/products-compaire" element={<ProductsCompaire />} />
           <Route path="/saller-page" element={<SallerPage />} />
           <Route path="/sallers" element={<Sallers />} />
-          <Route path="/product" element={<SingleProductPage />} />
+          <Route path="/product/:slug" element={<SingleProductPage />} />
           <Route path="/terms-condition" element={<TermsCondition />} />
           <Route path="/tracking-order" element={<TrackingOrder />} />
           <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/auth/verify-email" element={<VerifyEmail />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           {/* <Route path="/Auctions" element={<AuctionProductDetail />} /> */}
-          <Route path="/AcutionsDetail" element={<AuctionsProductDetail />} />
+          <Route path="/AcutionsDetail/:slug" element={<AuctionsProductDetail />} />
           <Route path="/AuctionGuide" element={<AuctionGuide />} />
 
         </Route>
