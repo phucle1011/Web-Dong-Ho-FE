@@ -359,9 +359,13 @@ export default function Payment() {
               />
               <label htmlFor="agreeTerms" className="text-sm">
                 Tôi đồng ý với{" "}
-                <a target="_blank" className="text-blue-600 underline">
+                <button
+                  type="button"
+                  onClick={() => setShowTerms(true)}
+                  className="text-blue-600 underline"
+                >
                   Điều khoản & Điều kiện
-                </a>
+                </button>
               </label>
             </div>
 
@@ -620,8 +624,10 @@ function TermsModal({ onClose }) {
 
             <h3 className="font-semibold text-base mt-4 mb-2">5. Trách nhiệm của bạn</h3>
             <ul className="list-disc pl-5 space-y-1">
-              <li>Cung cấp thông tin chính xác (tên người nhận, tên ngân hàng, số tài khoản).</li>
+              <li>Cung cấp thông tin rút tiền chính xác (tên người nhận, tên ngân hàng, số tài khoản).</li>
               <li>Không dùng ví cho mục đích gian lận hoặc bất hợp pháp.</li>
+              <li>Bạn có trách nhiệm bảo vệ tài khoản, không chia sẻ mật khẩu cho bất kỳ ai.</li>
+              <li>Chúng tôi sẽ không chịu trách nhiệm nếu có mất mát do bạn làm lộ thông tin đăng nhập.</li>
             </ul>
 
             <h3 className="font-semibold text-base mt-4 mb-2">6. Trách nhiệm của chúng tôi</h3>
@@ -637,7 +643,32 @@ function TermsModal({ onClose }) {
               <li>Nếu xảy ra tranh chấp không xử lý được sẽ giải quyết theo pháp luật Việt Nam.</li>
             </ul>
 
-            <h3 className="font-semibold text-base mt-4 mb-2">8. Liên hệ</h3>
+            <h3 className="font-semibold text-base mt-4 mb-2">8. Giới hạn giao dịch</h3>
+            <ul className="list-disc pl-5 space-y-1">
+              <li><strong>Số tiền nạp tối đa: </strong>99.999.999đ</li>
+              <li><strong>Số tiền nạp tối thiểu: </strong>13.000đ</li>
+              <li>Chúng tôi sẽ đóng băng tạm thời rút tiền của bạn trong khoảng thời gian bạn chưa thanh toán cho những đơn hàng đã chiến thắng đấu giá(24h).</li>
+            </ul>
+
+            <h3 className="font-semibold text-base mt-4 mb-2">9. Trường hợp tài khoản bị khóa</h3>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Nếu tài khoản của bạn bị khóa do vi phạm quy định, bạn cần liên hệ bộ phận hỗ trợ để xác minh và xử lý tiếp.</li>
+            </ul>
+
+            <h3 className="font-semibold text-base mt-4 mb-2">10. Không chuyển ví</h3>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Số dư ví không thể chuyển sang tài khoản khác.</li>
+              <li>Mọi giao dịch rút tiền chỉ có thể thực hiện về tài khoản ngân hàng chính chủ do bạn cung cấp.</li>
+            </ul>
+
+            <h3 className="font-semibold text-base mt-4 mb-2">11. Các hành vi bị nghiêm cấm</h3>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Dùng ví để thực hiện các hành vi gian lận, rửa tiền, hoặc hành vi trái pháp luật.</li>
+              <li>Dùng lỗi hệ thống để trục lợi.</li>
+              <li>Gửi yêu cầu giả mạo hoặc cố tình tạo giao dịch bất thường.</li>
+            </ul>
+
+            <h3 className="font-semibold text-base mt-4 mb-2">12. Liên hệ</h3>
             <p>
               Nếu cần hỗ trợ hoặc có bất kỳ thắc mắc nào, vui lòng liên hệ bộ phận Chăm sóc khách hàng của chúng tôi qua:
             </p>
