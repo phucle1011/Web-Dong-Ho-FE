@@ -128,7 +128,7 @@ export default function Payment() {
   const handleTopUp = async () => {
     const amountInt = parseInt(topUpAmount);
     if (!topUpAmount || isNaN(amountInt)) return toast.warning("Vui lòng nhập số tiền hợp lệ.");
-    if (amountInt < 13000) return toast.warning("Số tiền tối thiểu là 13,000₫.");
+    if (amountInt < 13000) return toast.warning("Số tiền tối thiểu là 13.000₫.");
     try {
       setIsSubmitting(true);
       const res = await axios.post(`${Constants.DOMAIN_API}/wallet/topup`, { amount: amountInt }, {
@@ -250,6 +250,7 @@ export default function Payment() {
     setHasActiveAuction(found);
   }, [cartItems]);
 
+  
   return (
     <div className="min-h-screen bg-gray-100 pb-10">
       <header className="bg-orange-500 text-white px-6 py-6 rounded-b-3xl">

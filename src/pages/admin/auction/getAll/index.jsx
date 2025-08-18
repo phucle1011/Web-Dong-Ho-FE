@@ -9,7 +9,11 @@ import {
     FaAngleDoubleRight,
     FaEdit,
     FaTrashAlt,
-    FaEye
+    FaEye,
+    FaListUl,
+    FaClock,
+    FaPlayCircle,
+    FaTimesCircle
 } from "react-icons/fa";
 import Constants from "../../../../Constants.jsx";
 import { toast } from "react-toastify";
@@ -178,20 +182,21 @@ function AuctionGetAll() {
 
                     <div className="flex flex-nowrap items-center gap-6 border-b border-gray-200 px-6 py-4 overflow-x-auto mb-4">
                         {[
-                            { key: "all", label: "Tất cả", color: "bg-gray-800", textColor: "text-white", count: statusCounts.all },
-                            { key: "upcoming", label: "Sắp diễn ra", color: "bg-blue-300", textColor: "text-blue-800", count: statusCounts.upcoming },
-                            { key: "active", label: "Đang diễn ra", color: "bg-green-300", textColor: "text-green-800", count: statusCounts.active },
-                            { key: "ended", label: "Đã kết thúc", color: "bg-red-300", textColor: "text-red-800", count: statusCounts.ended },
-                        ].map(({ key, label, color, textColor, count }) => {
+                            { key: "all", label: "Tất cả", icon: <FaListUl />, color: "bg-gray-800", textColor: "text-white", count: statusCounts.all },
+                            { key: "upcoming", label: "Sắp diễn ra", icon: <FaClock />, color: "bg-blue-300", textColor: "text-blue-800", count: statusCounts.upcoming },
+                            { key: "active", label: "Đang diễn ra", icon: <FaPlayCircle />, color: "bg-green-300", textColor: "text-green-800", count: statusCounts.active },
+                            { key: "ended", label: "Đã kết thúc", icon: <FaTimesCircle />, color: "bg-red-300", textColor: "text-red-800", count: statusCounts.ended },
+                        ].map(({ key, label, color, textColor, count, icon }) => {
                             const isActive = activeStatus === key;
                             return (
                                 <button
                                     key={key}
                                     onClick={() => handleFilterClick(key)}
-                                    className={`border px-3 py-1.5 text-nowrap ${isActive ? 'bg-[#073272] text-white' : 'bg-white text-gray-700'}`}
+                                    className={`border px-3 py-1.5 text-xs flex items-center gap-1 ${isActive ? 'bg-[#073272] text-white' : 'bg-white text-gray-700'}`}
                                 >
-                                    <span>{label}</span>
-                                    <span className={`${color} ${textColor} rounded-pill px-2 py-0.5 text-nowrap ms-2`}>
+                                    {icon && <span>{icon}</span>}
+                                    <span> {label}</span>
+                                    <span className={`${color} ${textColor} rounded-full px-1 py-0.5 ms-1`}>
                                         {count}
                                     </span>
                                 </button>
@@ -241,7 +246,7 @@ function AuctionGetAll() {
                                 const isExpanded = expandedRows[item.id];
                                 const shouldShowToggle = productNameRefs.current[item.id]?.scrollHeight > productNameRefs.current[item.id]?.clientHeight;
 
-                                return ( 
+                                return (
                                     <tr key={item.id}>
                                         <td className="p-2 border text-center">{(currentPage - 1) * recordsPerPage + index + 1}</td>
                                         <td className="p-2 border text-left max-w-xs">

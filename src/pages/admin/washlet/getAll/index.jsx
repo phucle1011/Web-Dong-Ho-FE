@@ -9,7 +9,11 @@ import {
   FaAngleDoubleRight,
   FaCheck,
   FaTrashAlt,
-  FaEye
+  FaEye,
+  FaListUl,
+  FaHourglassHalf,
+  FaCheckCircle,
+  FaTimesCircle 
 } from "react-icons/fa";
 import Constants from "../../../../Constants.jsx";
 import { toast } from "react-toastify";
@@ -141,19 +145,19 @@ function WashletGetAll() {
 
         <div className="flex flex-nowrap items-center gap-6 border-b border-gray-200 px-6 py-4 overflow-x-auto mb-4">
           {[
-            { key: "", label: "Tất cả", color: "bg-gray-800", textColor: "text-white", count: statusCounts.all },
-            { key: "pending", label: "Đang chờ duyệt", color: "bg-amber-300", textColor: "text-amber-800", count: statusCounts.pending },
-            { key: "approved", label: "Đã duyệt", color: "bg-green-300", textColor: "text-green-800", count: statusCounts.approved },
-            { key: "rejected", label: "Từ chối", color: "bg-rose-300", textColor: "text-rose-800", count: statusCounts.rejected },
-          ].map(({ key, label, color, textColor, count }) => {
+            { key: "", label: "Tất cả", icon: <FaListUl />, color: "bg-gray-800", textColor: "text-white", count: statusCounts.all },
+            { key: "pending", label: "Đang chờ duyệt", icon: <FaHourglassHalf />, color: "bg-amber-300", textColor: "text-amber-800", count: statusCounts.pending },
+            { key: "approved", label: "Đã duyệt", icon: <FaCheckCircle />, color: "bg-green-300", textColor: "text-green-800", count: statusCounts.approved },
+            { key: "rejected", label: "Từ chối", icon: <FaTimesCircle />, color: "bg-rose-300", textColor: "text-rose-800", count: statusCounts.rejected },
+          ].map(({ key, label, color, textColor, count, icon }) => {
             const isActive = activeStatus === key;
             return (
               <button
                 key={key}
                 onClick={() => handleFilterClick(key)}
-                className={`border px-3 py-1.5 text-nowrap ${isActive ? 'bg-[#073272] text-white' : 'bg-white text-gray-700'}`}
+                className={`border px-3 py-1.5 text-xs flex items-center gap-1 ${isActive ? 'bg-[#073272] text-white' : 'bg-white text-gray-700'}`}
               >
-                <span>{label}</span>
+                <span className="inline-flex items-center gap-1">{icon && icon} {label}</span>
                 <span className={`${color} ${textColor} rounded-pill px-2 py-0.5 ms-2`}>{count}</span>
               </button>
             );

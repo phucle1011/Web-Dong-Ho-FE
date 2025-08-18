@@ -11,7 +11,14 @@ import {
   FaEyeSlash,
   FaRedo,
   FaTrashAlt,
-  FaTrophy
+  FaTrophy,
+  FaClock,
+  FaCheckCircle,
+  FaTruck,
+  FaCheckDouble,
+  FaBoxOpen,
+  FaTimesCircle,
+  FaListUl
 } from "react-icons/fa";
 import Constants from "../../../../../Constants.jsx";
 import { toast } from "react-toastify";
@@ -334,7 +341,14 @@ export default function OrderTab() {
 
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-        <div className="bg-white p-6 rounded-md shadow-lg w-[400px]">
+        <div className="relative bg-white p-6 rounded-md shadow-lg w-[400px] overflow-visible">
+          <button
+            className="absolute top-2 right-2 text-black text-2xl hover:text-red-600 font-bold z-50"
+            onClick={onClose}
+          >
+            <span>&times;</span>
+          </button>
+
           <h3 className="text-lg font-semibold mb-4">{message}</h3>
 
           <label className="block mb-2">Lý do hủy:</label>
@@ -502,21 +516,22 @@ export default function OrderTab() {
             <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent mb-4">
               <div className="flex gap-2 text-sm text-left text-gray-500 whitespace-nowrap ms-2" style={{ maxWidth: '100%', overflowX: 'auto' }}>
                 {[
-                  { key: "", label: "Tất cả", color: "bg-gray-800", textColor: "text-white", count: statusCounts.all },
-                  { key: "pending", label: "Chờ xác nhận", color: "bg-amber-300", textColor: "text-amber-800", count: statusCounts.pending },
-                  { key: "confirmed", label: "Đã xác nhận", color: "bg-yellow-300", textColor: "text-yellow-900", count: statusCounts.confirmed },
-                  { key: "shipping", label: "Đang giao", color: "bg-blue-300", textColor: "text-blue-900", count: statusCounts.shipping },
-                  { key: "completed", label: "Hoàn thành", color: "bg-emerald-300", textColor: "text-emerald-800", count: statusCounts.completed },
-                  { key: "delivered", label: "Đã giao", color: "bg-green-300", textColor: "text-green-800", count: statusCounts.delivered },
-                  { key: "cancelled", label: "Đã hủy", color: "bg-rose-300", textColor: "text-rose-800", count: statusCounts.cancelled },
-                ].map(({ key, label, color, textColor, count }) => {
+                  { key: "", label: "Tất cả", icon: <FaListUl />, color: "bg-gray-800", textColor: "text-white", count: statusCounts.all },
+                  { key: "pending", label: "Chờ xác nhận", icon: <FaClock className="mr-1" />, color: "bg-amber-300", textColor: "text-amber-800", count: statusCounts.pending },
+                  { key: "confirmed", label: "Đã xác nhận", icon: <FaCheckCircle className="mr-1" />, color: "bg-yellow-300", textColor: "text-yellow-900", count: statusCounts.confirmed },
+                  { key: "shipping", label: "Đang giao", icon: <FaTruck className="mr-1" />, color: "bg-blue-300", textColor: "text-blue-900", count: statusCounts.shipping },
+                  { key: "delivered", label: "Đã giao", icon: <FaBoxOpen className="mr-1" />, color: "bg-green-300", textColor: "text-green-800", count: statusCounts.delivered },
+                  { key: "completed", label: "Hoàn thành", icon: <FaCheckDouble className="mr-1" />, color: "bg-emerald-300", textColor: "text-emerald-800", count: statusCounts.completed },
+                  { key: "cancelled", label: "Đã hủy", icon: <FaTimesCircle className="mr-1" />, color: "bg-rose-300", textColor: "text-rose-800", count: statusCounts.cancelled },
+                ].map(({ key, label, icon, color, textColor, count }) => {
                   const isActive = activeStatus === key;
                   return (
                     <button
                       key={key}
                       onClick={() => handleFilterClick(key)}
-                      className={`border px-2 py-1 text-xs whitespace-nowrap ${isActive ? 'bg-[#073272] text-white' : 'bg-white text-gray-700'}`}
+                      className={`border px-2 py-1 text-xs flex items-center gap-1 ${isActive ? 'bg-[#073272] text-white' : 'bg-white text-gray-700'}`}
                     >
+                      {icon && <span>{icon}</span>}
                       <span>{label}</span>
                       <span className={`${color} ${textColor} rounded-full px-1 py-0.5 ms-1`}>
                         {count}
@@ -677,12 +692,12 @@ export default function OrderTab() {
                                 <table className="w-full border-collapse border text-center">
                                   <thead>
                                     <tr className="bg-gray-200">
-                                      <th className="border p-2">Trạng thái</th>
-                                      <th className="border p-2">Tên sản phẩm</th>
-                                      <th className="border p-2">Số lượng</th>
-                                      <th className="border p-2">Đơn giá</th>
-                                      <th className="border p-2">Thành tiền</th>
-                                      <th className="border p-2">Đánh giá</th>
+                                      <th className="border p-2 whitespace-nowrap">Trạng thái</th>
+                                      <th className="border p-2 whitespace-nowrap">Tên sản phẩm</th>
+                                      <th className="border p-2 whitespace-nowrap">Số lượng</th>
+                                      <th className="border p-2 whitespace-nowrap">Đơn giá</th>
+                                      <th className="border p-2 whitespace-nowrap">Thành tiền</th>
+                                      <th className="border p-2 whitespace-nowrap">Đánh giá</th>
                                     </tr>
                                   </thead>
                                   <tbody>

@@ -9,6 +9,13 @@ import {
   FaAngleDoubleRight,
   FaEye,
   FaMapMarkerAlt,
+  FaClock,
+  FaCheckCircle,
+  FaTruck,
+  FaCheckDouble,
+  FaBoxOpen,
+  FaTimesCircle,
+  FaListUl
 } from "react-icons/fa";
 import Constants from "../../../../Constants.jsx";
 import { toast } from "react-toastify";
@@ -35,6 +42,11 @@ function OrderGetAll() {
     delivered: 0,
     cancelled: 0,
   });
+
+  const [showReasonModal, setShowReasonModal] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [reason, setReason] = useState("");
+  const [customReason, setCustomReason] = useState("");
 
   const translateStatus = (status) => {
     switch (status) {
@@ -132,9 +144,20 @@ function OrderGetAll() {
 
   const handleChangeStatus = async (orderId, newStatus) => {
     try {
+      let reasonToSend = "";
+      if (newStatus === "cancelled") {
+        if (!reason) {
+          toast.warning("Vui lòng chọn lý do hủy đơn.");
+          return;
+        }
+        reasonToSend = reason === "Khác" ? customReason : reason;
+      }
       await axios.put(
         `${Constants.DOMAIN_API}/admin/orders/edit/${orderId}`,
-        { status: newStatus }
+        {
+          status: newStatus,
+          cancellation_reason: reasonToSend,
+        }
       );
       toast.success("Cập nhật trạng thái thành công");
       fetchOrders(currentPage);
@@ -295,23 +318,23 @@ function OrderGetAll() {
 
         <div className="flex flex-nowrap items-center gap-6 border-b border-gray-200 px-6 py-4 overflow-x-auto mb-4">
           {[
-            { key: "", label: "Tất cả", color: "bg-gray-800", textColor: "text-white", count: statusCounts.all },
-            { key: "pending", label: "Chờ xác nhận", color: "bg-amber-300", textColor: "text-amber-800", count: statusCounts.pending },
-            { key: "confirmed", label: "Đã xác nhận", color: "bg-yellow-300", textColor: "text-yellow-900", count: statusCounts.confirmed },
-            { key: "shipping", label: "Đang giao", color: "bg-blue-300", textColor: "text-blue-900", count: statusCounts.shipping },
-            { key: "completed", label: "Hoàn thành", color: "bg-emerald-300", textColor: "text-emerald-800", count: statusCounts.completed },
-            { key: "delivered", label: "Đã giao", color: "bg-green-300", textColor: "text-green-800", count: statusCounts.delivered },
-            { key: "cancelled", label: "Đã hủy", color: "bg-rose-300", textColor: "text-rose-800", count: statusCounts.cancelled },
-          ].map(({ key, label, color, textColor, count }) => {
+            { key: "", label: "Tất cả", icon: <FaListUl />, color: "bg-gray-800", textColor: "text-white", count: statusCounts.all },
+            { key: "pending", label: "Chờ xác nhận", icon: <FaClock className="mr-1" />, color: "bg-amber-300", textColor: "text-amber-800", count: statusCounts.pending },
+            { key: "confirmed", label: "Đã xác nhận", icon: <FaCheckCircle className="mr-1" />, color: "bg-yellow-300", textColor: "text-yellow-900", count: statusCounts.confirmed },
+            { key: "shipping", label: "Đang giao", icon: <FaTruck className="mr-1" />, color: "bg-blue-300", textColor: "text-blue-900", count: statusCounts.shipping },
+            { key: "completed", label: "Hoàn thành", icon: <FaCheckDouble className="mr-1" />, color: "bg-emerald-300", textColor: "text-emerald-800", count: statusCounts.completed },
+            { key: "delivered", label: "Đã giao", icon: <FaBoxOpen className="mr-1" />, color: "bg-green-300", textColor: "text-green-800", count: statusCounts.delivered },
+            { key: "cancelled", label: "Đã hủy", icon: <FaTimesCircle className="mr-1" />, color: "bg-rose-300", textColor: "text-rose-800", count: statusCounts.cancelled },
+          ].map(({ key, label, color, textColor, count, icon }) => {
             const isActive = activeStatus === key;
             return (
               <button
                 key={key}
                 onClick={() => handleFilterClick(key)}
-                className={`border px-3 py-1.5  text-nowrap ${isActive ? 'bg-[#073272] text-white' : 'bg-white text-gray-700'
+                className={`border px-3 py-1.5 text-xs flex items-center gap-1 ${isActive ? 'bg-[#073272] text-white' : 'bg-white text-gray-700'
                   }`}
               >
-                <span>{label}</span>
+                <span className="inline-flex items-center gap-1"> {icon && icon} {label}</span>
                 <span className={`${color} ${textColor} rounded-pill px-2 py-0.5 text-nowrap ms-2`}>
                   {count}
                 </span>
@@ -378,7 +401,14 @@ function OrderGetAll() {
                         ) : (
                           <select
                             value={order.status}
-                            onChange={(e) => handleChangeStatus(order.id, e.target.value)}
+                            onChange={(e) => {
+                              if (e.target.value === "cancelled") {
+                                setSelectedOrderId(order.id);
+                                setShowReasonModal(true);
+                              } else {
+                                handleChangeStatus(order.id, e.target.value);
+                              }
+                            }}
                             className="capitalize border rounded px-2 py-1"
                           >
                             {getStatusesForOrder(order.status).map((status) => (
@@ -537,6 +567,68 @@ function OrderGetAll() {
           </div>
         </div>
       </div>
+      {showReasonModal && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded shadow-md w-[400px] relative">
+
+            <button
+              className="absolute top-2 right-2 text-gray-500 hover:text-red-600 text-xl font-bold mr-2"
+              onClick={() => setShowReasonModal(false)}
+            >
+              ×
+            </button>
+
+            <h2 className="text-lg font-semibold mb-4">Lý do hủy đơn hàng</h2>
+
+            <label className="block mb-2">Chọn lý do:</label>
+            <select
+              className="w-full border rounded p-2 mb-4"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            >
+              <option value="">-- Chọn lý do --</option>
+              <option value="Không cần nữa">Không cần nữa</option>
+              <option value="Thay đổi ý định">Thay đổi ý định</option>
+              <option value="Giá quá cao">Giá quá cao</option>
+              <option value="Giao hàng chậm">Giao hàng chậm</option>
+              <option value="Khác">Khác</option>
+            </select>
+
+            {reason === "Khác" && (
+              <>
+                <label className="block mb-2">Lý do cụ thể:</label>
+                <input
+                  className="w-full border rounded p-2 mb-4"
+                  type="text"
+                  value={customReason}
+                  onChange={(e) => setCustomReason(e.target.value)}
+                  placeholder="Nhập lý do cụ thể"
+                />
+              </>
+            )}
+
+            <div className="flex justify-end">
+              <button
+                className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-md mr-2"
+                onClick={() => setShowReasonModal(false)}
+              >
+                Hủy
+              </button>
+              <button
+                className="bg-red-600 hover:bg-red-800 text-white px-4 py-2 rounded-md"
+                onClick={() => {
+                  const finalReason = reason === "Khác" ? customReason : reason;
+                  handleChangeStatus(selectedOrderId, "cancelled", finalReason);
+                  setShowReasonModal(false);
+                }}
+              >
+                Xác nhận hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
