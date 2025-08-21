@@ -62,6 +62,17 @@ const PromotionProductForm = ({ onSuccess }) => {
     return { status: "Đã kết thúc", className: "text-gray-500" };
   };
 
+  const isSelectedPromoUpcoming = (() => {
+  if (!selectedPromotion?.start_date || !selectedPromotion?.end_date) return false;
+  const { status } = getPromotionStatus(
+    selectedPromotion.start_date,
+    selectedPromotion.end_date
+  );
+  return status === "Sắp bắt đầu";
+})();
+
+
+
   const fetchPromotions = async () => {
     try {
       const res = await axios.get(
@@ -191,26 +202,25 @@ const PromotionProductForm = ({ onSuccess }) => {
       return;
     }
 
-    const usedVariants = data.product_variant_id.filter((id) =>
-      usedVariantIds.includes(parseInt(id))
-    );
+const usedVariants = data.product_variant_id.filter((id) =>
+  usedVariantIds.includes(parseInt(id))
+);
 
-    if (usedVariants.length > 0) {
-      const variantDetails = usedVariants
-        .map((id) => {
-          const variant = productVariants.find((v) => v.id === parseInt(id));
-          return variant
-            ? `${variant.sku} (${
-                variant.product?.name || "Tên không xác định"
-              })`
-            : id;
-        })
-        .join(", ");
-      toast.error(
-        `Không thể thêm các biến thể sau vì chúng đã được sử dụng trong khuyến mãi khác: ${variantDetails}.`
-      );
-      return;
-    }
+// Nếu khuyến mãi đang chọn KHÔNG phải "Sắp bắt đầu" thì mới chặn
+if (!isSelectedPromoUpcoming && usedVariants.length > 0) {
+  const variantDetails = usedVariants
+    .map((id) => {
+      const variant = productVariants.find((v) => v.id === parseInt(id));
+      return variant
+        ? `${variant.sku} (${variant.product?.name || "Tên không xác định"})`
+        : id;
+    })
+    .join(", ");
+  toast.error(
+    `Không thể thêm các biến thể sau vì chúng đã được sử dụng trong khuyến mãi khác: ${variantDetails}.`
+  );
+  return;
+}
 
     const payload = {
       promotion_id: parseInt(data.promotion_id),
@@ -276,50 +286,59 @@ const PromotionProductForm = ({ onSuccess }) => {
       setIsLoading(false);
     }
   };
+const availablePromotions = promotions.filter((promo) => {
+  const { status } = getPromotionStatus(promo.start_date, promo.end_date);
+  // Cho phép chọn nếu:
+  // - Chưa dùng, hoặc
+  // - Sắp bắt đầu (dù đã có dùng), và còn lượt
+  const allowWhenUpcoming = status === "Sắp bắt đầu";
+  const notUsed = !usedPromotionIds.includes(promo.id);
+  return (notUsed || allowWhenUpcoming) && promo.quantity > 0;
+});
 
-  const availablePromotions = promotions.filter(
-    (promo) => !usedPromotionIds.includes(promo.id) && promo.quantity > 0
-  );
 
-  const availableVariants = productVariants
-    .filter((variant) => {
-      // if (usedVariantIds.includes(variant.id) || selectedVariantIds.includes(variant.id.toString())) {
-      //   return false;
-      // }
+const availableVariants = productVariants
+  .filter((variant) => {
+    // Ẩn biến thể hết hàng
+    if (!variant.stock || Number(variant.stock) <= 0) return false;
 
-      // Ẩn biến thể hết hàng
-      if (!variant.stock || Number(variant.stock) <= 0) return false;
-      if (usedVariantIds.includes(variant.id)) return false;
-      if (
-        selectedPromotion?.min_price_threshold &&
-        parseFloat(variant.price) <
-          parseFloat(selectedPromotion.min_price_threshold)
-      ) {
-        return false;
+    // Nếu promo đang chọn KHÔNG phải "Sắp bắt đầu" => chặn biến thể đã dùng ở promo khác
+    if (!isSelectedPromoUpcoming && usedVariantIds.includes(variant.id)) return false;
+
+    // Áp ngưỡng tối thiểu giá (nếu có)
+    if (
+      selectedPromotion?.min_price_threshold &&
+      parseFloat(variant.price) < parseFloat(selectedPromotion.min_price_threshold)
+    ) {
+      return false;
+    }
+
+    // Không để finalPrice <= 0
+    if (selectedPromotion) {
+      const price = parseFloat(variant.price);
+      let finalPrice = price;
+      if (selectedPromotion.discount_type === "percentage") {
+        finalPrice = price * (1 - selectedPromotion.discount_value / 100);
+      } else if (selectedPromotion.discount_type === "fixed") {
+        finalPrice = price - selectedPromotion.discount_value;
       }
+      if (finalPrice <= 0) return false;
+    }
 
-      if (selectedPromotion) {
-        const price = parseFloat(variant.price);
-        let finalPrice = price;
-        if (selectedPromotion.discount_type === "percentage") {
-          finalPrice = price * (1 - selectedPromotion.discount_value / 100);
-        } else if (selectedPromotion.discount_type === "fixed") {
-          finalPrice = price - selectedPromotion.discount_value;
-        }
-        if (finalPrice <= 0) {
-          return false;
-        }
-      }
+    return true;
+  })
+  .map((variant) => ({
+    value: variant.id.toString(),
+    label: `${variant.sku} (${variant.product?.name}) – ${parseFloat(variant.price).toLocaleString("vi-VN")}₫`,
+    price: parseFloat(variant.price) || 0,
+  }));
 
-      return true;
-    })
-    .map((variant) => ({
-      value: variant.id.toString(),
-      label: `${variant.sku} (${variant.product?.name}) – ${parseFloat(
-        variant.price
-      ).toLocaleString("vi-VN")}₫`,
-      price: parseFloat(variant.price) || 0,
-    }));
+{isSelectedPromoUpcoming && (
+  <small className="text-xs text-blue-600">
+    Lưu ý: Bạn đang chọn khuyến mãi <b>Sắp bắt đầu</b>, nên có thể chọn lại biến thể đã dùng ở khuyến mãi khác. 
+    Hệ thống vẫn kiểm tra tồn kho tổng để tránh vượt quá stock.
+  </small>
+)}
 
   useEffect(() => {
     if (selectedPromotion?.discount_type === "percentage") {

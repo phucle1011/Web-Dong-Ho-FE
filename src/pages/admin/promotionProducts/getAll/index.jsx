@@ -205,24 +205,25 @@ const PromotionProductList = () => {
     });
   };
 
-const groupedProducts = groupByPromotionName(promotionProducts).sort(
-  ([, itemsA], [, itemsB]) => {
-    const getSortIndex = (promo) => {
-      const status = getPromotionStatus(promo.start_date, promo.end_date);
-      return {
-        active: 0,
-        upcoming: 1,
-        expired: 2,
-        inactive: 3,
-      }[status] ?? 3;
-    };
+  const groupedProducts = groupByPromotionName(promotionProducts).sort(
+    ([, itemsA], [, itemsB]) => {
+      const getSortIndex = (promo) => {
+        const status = getPromotionStatus(promo.start_date, promo.end_date);
+        return (
+          {
+            active: 0,
+            upcoming: 1,
+            expired: 2,
+            inactive: 3,
+          }[status] ?? 3
+        );
+      };
 
-    const promoA = itemsA[0]?.promotion || {};
-    const promoB = itemsB[0]?.promotion || {};
-    return getSortIndex(promoA) - getSortIndex(promoB);
-  }
-);
-
+      const promoA = itemsA[0]?.promotion || {};
+      const promoB = itemsB[0]?.promotion || {};
+      return getSortIndex(promoA) - getSortIndex(promoB);
+    }
+  );
 
   const handlePageChange = (page) => {
     if (page >= 1 && page <= pagination.totalPages) {
@@ -500,7 +501,13 @@ const groupedProducts = groupByPromotionName(promotionProducts).sort(
                                           "-"}
                                       </td>
                                       <td className="border p-2 text-center">
-                                        {item.variant_quantity || "-"}
+                                        {item.variant_quantity === 0 ? (
+                                          <span className="text-red-600 font-medium">
+                                            Hết lượt
+                                          </span>
+                                        ) : (
+                                          item.variant_quantity ?? "-"
+                                        )}
                                       </td>
 
                                       <td className="border p-2 text-center">
@@ -513,16 +520,40 @@ const groupedProducts = groupByPromotionName(promotionProducts).sort(
                                         </span>
                                       </td>
                                       <td className="border p-2 text-center">
-                                        <button
-                                          onClick={() =>
-                                            handleDelete(item.id, promoName)
-                                          }
-                                          className="p-2 rounded-full bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-700 transition duration-200"
-                                          title="Xóa"
-                                          aria-label={`Xóa ${promoName}`}
-                                        >
-                                          <FaTrashAlt size={20} />
-                                        </button>
+                                        {(() => {
+                                          const canDelete =
+                                            itemStatus === "upcoming"; // CHỈ cho xóa khi sắp diễn ra
+                                          const title = canDelete
+                                            ? "Xóa"
+                                            : itemStatus === "active"
+                                            ? "Không thể xóa khi khuyến mãi đang diễn ra"
+                                            : "Chỉ được xóa khi khuyến mãi sắp diễn ra";
+
+                                          return (
+                                            <button
+                                              onClick={
+                                                canDelete
+                                                  ? () =>
+                                                      handleDelete(
+                                                        item.id,
+                                                        promoName
+                                                      )
+                                                  : undefined
+                                              }
+                                              disabled={!canDelete}
+                                              className={`p-2 rounded-full transition duration-200
+          ${
+            canDelete
+              ? "bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-700"
+              : "bg-gray-200 text-gray-400 cursor-not-allowed"
+          }`}
+                                              title={title}
+                                              aria-label={`Xóa ${promoName}`}
+                                            >
+                                              <FaTrashAlt size={20} />
+                                            </button>
+                                          );
+                                        })()}
                                       </td>
                                     </tr>
                                   );

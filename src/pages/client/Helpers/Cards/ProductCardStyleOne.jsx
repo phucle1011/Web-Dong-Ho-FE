@@ -192,8 +192,8 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
 
   const priceInfo = useMemo(() => {
     const baseVariant = selectedVariant || representativeVariant || {};
-   const { original, sale, discountAmount, discountType, discountPercent } = computePricing(baseVariant);
-
+    const { original, sale, discountAmount, discountType, discountPercent } =
+      computePricing(baseVariant);
 
     const hasStock = purchasableStock > 0; // bạn đã tính purchasableStock ở trên
 
@@ -524,64 +524,94 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
     })();
   }, [isQuickViewOpen, product?.id, selectedVariant?.id]);
   // Hỗ trợ nhiều tên field khác nhau từ backend
-// ✅ Đặt trên cùng file, trước component (hoặc ít nhất trước computePricing)
-function toNum(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-}
+  // ✅ Đặt trên cùng file, trước component (hoặc ít nhất trước computePricing)
+  function toNum(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  }
 
-function computePricing(variant) {
-  const original = Math.max(0, toNum(variant?.price));
-  const finalFromVariant = toNum(variant?.final_price);
+  // Helper nhỏ, chống NaN
+  function toNum(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  }
 
-  const pm = variant?.promotion || null;
-  const discountType = pm?.discount_type || pm?.type || null;
+  /**
+   * Quy ước ưu tiên:
+   * 1) variant.final_price (nếu backend đã set)  ← tin tưởng tuyệt đối
+   * 2) promotion.discounted_price (backend đã áp trần max_price)  ← tin tưởng
+   * 3) Nếu không có 1/2: mới tự tính theo promotion.type (percent/amount)
+   * 4) Cuối cùng fallback = original
+   */
+  function computePricing(variant) {
+    const original = Math.max(0, toNum(variant?.price));
+    const pm = variant?.promotion || null;
 
-  const percentRaw = toNum(pm?.discount_percent ?? pm?.discountPercent  ?? pm?.percentage);
-  const amountRaw  = toNum(pm?.discount_amount ?? pm?.amount ?? pm?.value);
-  const discountedFromPm = toNum(pm?.discounted_price);
+    const finalFromVariant = toNum(variant?.final_price);
+    const discountedFromPm = toNum(pm?.discounted_price);
+    const discountType = pm?.discount_type || pm?.type || null;
 
-  let sale = 0;
+    let sale;
 
-  if (finalFromVariant > 0) {
-    sale = finalFromVariant;
-  } else if (pm && original > 0) {
-    if (discountType === "percentage" || discountType === "percent") {
-      const pct = Math.max(0, Math.min(100, percentRaw));
-      sale = original * (1 - pct / 100);
-    } else if (
-      discountType === "amount" ||
-      discountType === "fixed" ||
-      discountType === "fixed_amount" ||
-      discountType === "currency"
-    ) {
-      sale = original - amountRaw;
-    } else if (discountedFromPm > 0) {
+    // 1) Ưu tiên final_price từ variant
+    if (finalFromVariant > 0 && original > 0) {
+      sale = finalFromVariant;
+
+      // 2) Sau đó ưu tiên discounted_price do backend gửi
+    } else if (discountedFromPm > 0 && original > 0) {
       sale = discountedFromPm;
+
+      // 3) Không có giá đã tính sẵn, mới tự tính theo type
+    } else if (pm && original > 0) {
+      if (discountType === "percentage" || discountType === "percent") {
+        const pct = Math.max(
+          0,
+          Math.min(
+            100,
+            toNum(pm?.discount_percent ?? pm?.discountPercent ?? pm?.percentage)
+          )
+        );
+        sale = original * (1 - pct / 100);
+      } else if (
+        discountType === "amount" ||
+        discountType === "fixed" ||
+        discountType === "fixed_amount" ||
+        discountType === "currency"
+      ) {
+        sale =
+          original -
+          Math.max(0, toNum(pm?.discount_amount ?? pm?.amount ?? pm?.value));
+      } else {
+        sale = original;
+      }
     } else {
       sale = original;
     }
-  } else if (discountedFromPm > 0) {
-    sale = discountedFromPm;
-  } else {
-    sale = original;
+
+    // Clamp về [0, original]
+    sale = Math.max(0, Math.min(sale, original));
+
+    // Tính mức giảm thực tế từ original & sale (không lấy từ pm để tránh sai lệch)
+    const discountAmount = Math.max(0, original - sale);
+    const percentExact = original > 0 ? (discountAmount / original) * 100 : 0;
+
+    let discountPercent;
+    if (percentExact <= 0) discountPercent = 0;
+    else if (percentExact < 1) {
+      const one = Math.round(percentExact * 10) / 10; // 0.0–0.9
+      discountPercent = one === 0 ? 0.1 : one; // sàn 0.1%
+    } else {
+      discountPercent = Math.round(percentExact);
+    }
+
+    return {
+      original,
+      sale,
+      discountAmount,
+      discountPercent,
+      discountType, // giữ nguyên type để UI quyết định hiển thị % hay số tiền
+    };
   }
-
-  sale = Math.max(0, Math.min(sale, original));
-
-  const discountAmount = Math.max(0, original - sale);
-  const percentExact = original > 0 ? (discountAmount / original) * 100 : 0;
-
-  let discountPercent;
-  if (percentExact <= 0) discountPercent = 0;
-  else if (percentExact < 1) {
-    const one = Math.round(percentExact * 10) / 10;
-    discountPercent = one === 0 ? 0.1 : one; // sàn 0.1%
-  } else discountPercent = Math.round(percentExact);
-
-  return { original, sale, discountAmount, discountPercent, discountType };
-}
-
 
   const QuickViewDialog = () =>
     isQuickViewOpen &&
@@ -750,23 +780,23 @@ function computePricing(variant) {
                         }
                       >
                         <p className="font-medium">{name}</p>
-                     <p className="text-qred font-semibold">
-  {sale.toLocaleString("vi-VN")}₫
-</p>
+                        <p className="text-qred font-semibold">
+                          {sale.toLocaleString("vi-VN")}₫
+                        </p>
 
-{sale < original && (
-  <div className="flex items-center justify-center space-x-1">
-    <p className="text-qgray line-through text-[10px]">
-      {original.toLocaleString("vi-VN")}₫
-    </p>
-    <span className="text-white text-[10px] font-semibold bg-qred px-1 rounded">
-      {discountType === "percentage" || discountType === "percent"
-        ? `-${discountPercent}%`
-        : `-${discountAmount.toLocaleString("vi-VN")}₫`}
-    </span>
-  </div>
-)}
-
+                        {sale < original && (
+                          <div className="flex items-center justify-center space-x-1">
+                            <p className="text-qgray line-through text-[10px]">
+                              {original.toLocaleString("vi-VN")}₫
+                            </p>
+                            <span className="text-white text-[10px] font-semibold bg-qred px-1 rounded">
+                              {discountType === "percentage" ||
+                              discountType === "percent"
+                                ? `-${discountPercent}%`
+                                : `-${discountAmount.toLocaleString("vi-VN")}₫`}
+                            </span>
+                          </div>
+                        )}
 
                         <p className="text-[10px] font-medium">
                           {inAuction
@@ -984,8 +1014,8 @@ function computePricing(variant) {
         {discountPercent > 0 && displayOriginalPrice > displayPrice && (
           <span className="absolute top-2 right-2 text-white text-xs font-semibold bg-qred px-2 py-1 rounded z-10 sm:text-sm sm:px-3 sm:py-1.5">
             {discountType === "percentage" || discountType === "percent"
-              ? `-${discountPercent }%`
-              : `-${discountAmount.toLocaleString("vi-VN")}₫`}
+              ? `-${Number(discountPercent).toString()}%`
+              : `-${Number(discountAmount).toLocaleString("vi-VN")}₫`}
           </span>
         )}
       </div>
