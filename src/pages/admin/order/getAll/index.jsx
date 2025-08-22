@@ -316,7 +316,7 @@ function OrderGetAll() {
         </div>
 
 
-        <div className="flex flex-nowrap items-center gap-6 border-b border-gray-200 px-6 py-4 overflow-x-auto mb-4">
+        <div className="flex flex-nowrap items-center gap-6 border-b border-gray-200 px-6 py-4 overflow-x-auto mb-4 whitespace-nowrap">
           {[
             { key: "", label: "Tất cả", icon: <FaListUl />, color: "bg-gray-800", textColor: "text-white", count: statusCounts.all },
             { key: "pending", label: "Chờ xác nhận", icon: <FaClock className="mr-1" />, color: "bg-amber-300", textColor: "text-amber-800", count: statusCounts.pending },
@@ -331,7 +331,7 @@ function OrderGetAll() {
               <button
                 key={key}
                 onClick={() => handleFilterClick(key)}
-                className={`border px-3 py-1.5 text-xs flex items-center gap-1 ${isActive ? 'bg-[#073272] text-white' : 'bg-white text-gray-700'
+                className={`border px-3 py-1.5 text-xs flex items-center gap-1 whitespace-nowrap ${isActive ? 'bg-[#073272] text-white' : 'bg-white text-gray-700'
                   }`}
               >
                 <span className="inline-flex items-center gap-1"> {icon && icon} {label}</span>

@@ -1047,7 +1047,7 @@ export default function CheckoutPage() {
             toast.error("Liên kết thanh toán MoMo không hợp lệ.");
           }
         } else {
-          toast.success("Đặt hàng thành công!");
+          toast.success("Chúc mừng bạn đã đặt hàng thành công. Cảm ơn bạn đã ủng hộ chúng tôi!");
           navigate("/cart");
         }
       }
@@ -1107,6 +1107,17 @@ export default function CheckoutPage() {
       }));
     }
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("success") === "true") {
+      const msg = params.get("message") || "Chúc mừng bạn đã đặt hàng thành công. Cảm ơn bạn đã ủng hộ chúng tôi!";
+      toast.success(msg, { position: "top-center", autoClose: 3000 });
+
+      ["success", "orderId", "message"].forEach(k => params.delete(k));
+      navigate({ pathname: location.pathname, search: params.toString() ? `?${params}` : "" }, { replace: true });
+    }
+  }, [location, navigate]);
 
   return (
     <Layout childrenClasses="pt-0 pb-0">
