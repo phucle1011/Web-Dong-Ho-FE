@@ -35,6 +35,7 @@ export default function SingleProductPage() {
   const [description, setDescription] = useState(""); // <- nên dùng string thay vì []
   const [isExpanded, setIsExpanded] = useState(false);
   const [isOverflowing, setIsOverflowing] = useState(false);
+  const location = useLocation();
 const { slug } = useParams();
 
   // --- Fetch dữ liệu sản phẩm + sản phẩm tương tự ---
@@ -94,6 +95,17 @@ const { slug } = useParams();
       }, 400);
     }
   }, []);
+   
+
+  useEffect(() => {
+    if (location.hash) {
+      // Ví dụ: #review hoặc #comment-123
+      const el = document.querySelector(location.hash);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+  }, [location]);
 
   useEffect(() => {
     if (tab === "review") {

@@ -722,7 +722,8 @@ export default function OrderTab() {
                                             </td>
                                             <td className="p-2">
                                               {order.status === "completed" ? (
-                                                item.auction_id ? (   // 🚫 nếu có auction_id thì cấm đánh giá
+                                                item.auction_id ? (
+                                                  // 🚫 Nếu là sản phẩm đấu giá thì không được đánh giá
                                                   <span className="text-gray-400 italic">
                                                     Sản phẩm đấu giá là duy nhất không thể đánh giá
                                                   </span>
@@ -730,15 +731,25 @@ export default function OrderTab() {
                                                   <button
                                                     className="text-blue-500 hover:text-blue-900 transition-colors"
                                                     onClick={() => {
-                                                      const product = item.variant?.product;
-                                                      const productId = product?.id;
+                                                      console.log("👉 Full item click:", JSON.parse(JSON.stringify(item)));
+
+                                                      const productSlug = item?.variant?.product?.slug;
+                                                      const productId = item?.variant?.product?.id; // ✅ Lấy productId luôn
+                                                      console.log("👉 Slug lấy được:", productSlug, "👉 ID:", productId);
+
+                                                      if (!productSlug) {
+                                                        console.error("❌ Thiếu slug sản phẩm:", JSON.stringify(item.variant, null, 2));
+                                                        toast.error("Không tìm thấy sản phẩm để đánh giá.");
+                                                        return;
+                                                      }
+
                                                       const deliveredAt = new Date(item.updated_at);
-                                                      const currentDate = new Date();
-                                                      const daysPassed =
-                                                        (currentDate - deliveredAt) / (1000 * 60 * 60 * 24);
+                                                      const now = new Date();
+                                                      const daysPassed = (now - deliveredAt) / (1000 * 60 * 60 * 24);
 
                                                       if (daysPassed > 7) {
-                                                        toast.error("Thời gian đánh giá đã hết. Vượt quá 7 ngày kể từ khi giao hàng.");
+                                                        console.warn("⏰ Quá hạn đánh giá:", daysPassed, "ngày");
+                                                        toast.error("Thời gian đánh giá đã hết (quá 7 ngày).");
                                                         return;
                                                       }
 
@@ -746,19 +757,22 @@ export default function OrderTab() {
 
                                                       if (item.comment) {
                                                         if (editedOnce) {
-                                                          navigate(`/product#comment-${item.comment.id}`, {
-                                                            state: { productId: product.id },
+                                                          console.log("👉 Điều hướng tới comment cũ:", item.comment.id);
+                                                          navigate(`/product/${productSlug}#comment-${item.comment.id}`, {
+                                                            state: { productId }, // ✅ Truyền productId qua state
                                                           });
                                                         } else {
+                                                          console.log("👉 Điều hướng chỉnh sửa đánh giá");
                                                           sessionStorage.setItem("pendingReviewOrderDetailId", item.id);
-                                                          navigate(`/product#review`, {
-                                                            state: { productId: product.id },
+                                                          navigate(`/product/${productSlug}#review`, {
+                                                            state: { productId }, // ✅ Truyền productId qua state
                                                           });
                                                         }
                                                       } else {
+                                                        console.log("👉 Điều hướng thêm đánh giá mới");
                                                         sessionStorage.setItem("pendingReviewOrderDetailId", item.id);
-                                                        navigate(`/product#review`, {
-                                                          state: { productId: product.id },
+                                                        navigate(`/product/${productSlug}#review`, {
+                                                          state: { productId }, // ✅ Truyền productId qua state
                                                         });
                                                       }
                                                     }}
@@ -773,11 +787,13 @@ export default function OrderTab() {
                                                       <span>Đánh giá</span>
                                                     )}
                                                   </button>
+
                                                 )
                                               ) : (
                                                 <span className="text-gray-400 italic">Chưa thể đánh giá</span>
                                               )}
                                             </td>
+
 
                                           </tr>
                                         ))}

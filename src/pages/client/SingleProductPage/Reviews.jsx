@@ -21,9 +21,9 @@ const ProductReviewSection = () => {
   const [filterType, setFilterType] = useState("all");
   const [filterRating, setFilterRating] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
-const { state } = useLocation();
+  const { state } = useLocation();
   const navigate = useNavigate();
-useEffect(() => {
+  useEffect(() => {
     if (!state?.productId) {
       toast.error("Thiếu thông tin sản phẩm!");
       navigate("/all-products");
@@ -79,6 +79,8 @@ useEffect(() => {
   const fetchComments = async () => {
     try {
       setLoading(true);
+      //https://web-dong-ho-be.onrender.com
+      // https://web-dong-ho-be.onrender.com
       const res = await axios.get(`https://web-dong-ho-be.onrender.com/comment/product/${productId}`);
       const data = res.data.data;
       const parentComments = data.filter((c) => c.parent_id === null);
@@ -116,7 +118,7 @@ useEffect(() => {
   const handleImageChange = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length > 3) {
-toast.error("Chỉ được tải tối đa 3 ảnh. Vui lòng chọn lại.");
+      toast.error("Chỉ được tải tối đa 3 ảnh. Vui lòng chọn lại.");
 
       e.target.value = null;
       return;
@@ -126,7 +128,7 @@ toast.error("Chỉ được tải tối đa 3 ảnh. Vui lòng chọn lại.");
     for (const file of files) {
       const isWatch = await isWatchImage(file);
       if (!isWatch) {
-toast.error("Một hoặc nhiều ảnh bạn tải lên không phải là đồng hồ. Vui lòng chọn lại.");
+        toast.error("Một hoặc nhiều ảnh bạn tải lên không phải là đồng hồ. Vui lòng chọn lại.");
 
         e.target.value = null;
         return;
@@ -160,7 +162,7 @@ toast.error("Một hoặc nhiều ảnh bạn tải lên không phải là đồ
         }
       } catch (err) {
         console.error("Lỗi upload ảnh:", err);
-toast.error("Không thể tải ảnh lên Cloudinary. Vui lòng thử lại.");
+        toast.error("Không thể tải ảnh lên Cloudinary. Vui lòng thử lại.");
 
         return null; // dừng luôn nếu 1 ảnh lỗi
       }
@@ -172,142 +174,156 @@ toast.error("Không thể tải ảnh lên Cloudinary. Vui lòng thử lại.");
 
 
 
- const reviewAction = async () => {
-  if (!message || rating === 0) {
-toast.warning("Vui lòng nhập nội dung và chọn số sao trước khi gửi.");
-
-    return;
-  }
-
-  try {
-    const response = await fetch("/badword.txt");
-    const text = await response.text();
-
-   const badWordsVi = text
-  .split("\n")
-  .map((word) => word.trim())
-  .filter((word) => word.length >= 2 && !word.startsWith("#"));
-
-
-    
-// Hàm normalize full nội dung
-const normalizeFullMessage = (text) =>
-  (text || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // bỏ dấu tiếng Việt
-    .replace(/[^\w]|_/g, "")         // xoá tất cả ký tự không phải chữ/số (bao gồm khoảng trắng, dấu câu)
-    .trim();
-
-// 1. Chuẩn hoá từng từ (so sánh theo từ - tránh false positive)
-const normalizeWord = (word) =>
-  (word || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g, "")
-    .trim();
-
-
-const normalizedBadWords = badWordsVi.map(normalizeWord);
-
-const messageWords = message.split(/\s+/).map(normalizeWord).filter(Boolean);
-
-
-const fullNormalizedMessage = normalizeFullMessage(message);
-
-
-const foundBad =
-  messageWords.find((word) => normalizedBadWords.includes(word)) ||
-  normalizedBadWords
-    .filter((bad) => bad.length >= 4)
-    .find((bad) => fullNormalizedMessage.includes(bad));
-
-
-if (foundBad) {
-  toast.error("Nội dung đánh giá chứa từ ngữ không phù hợp. Vui lòng chỉnh sửa.");
-  return;
-}
-
-
-if (foundBad) {
-  toast.error("Nội dung đánh giá chứa từ ngữ không phù hợp. Vui lòng chỉnh sửa.");
-  return;
-}
-
-if (foundBad) {
-toast.error("Nội dung đánh giá chứa từ ngữ không phù hợp. Vui lòng chỉnh sửa.");
-
-  return;
-}
-
-
-    if (!orderDetailId) {
-toast.error("Không thể gửi đánh giá do thiếu mã chi tiết đơn hàng.");
-
+  const reviewAction = async () => {
+    if (!message || rating === 0) {
+      toast.warning("Vui lòng nhập nội dung và chọn số sao trước khi gửi.");
       return;
     }
 
-    setReviewLoading(true);
-    let imageUrls = [];
+    try {
+      const response = await fetch("/badword.txt");
+      const text = await response.text();
 
-  
-    if (imageFiles?.length > 0) {
-      imageUrls = await handleImageUploads(imageFiles);
-      if (!imageUrls) {
-        setReviewLoading(false);
+      const badWordsVi = text
+        .split("\n")
+        .map((word) => word.trim())
+        .filter((word) => word.length >= 2 && !word.startsWith("#"));
+
+      // Hàm normalize full nội dung
+      // Hàm normalize full nội dung
+      const normalizeFullMessage = (text) =>
+        (text || "")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          // map số và ký tự đặc biệt về chữ cái tương ứng
+          .replace(/0/g, "o")
+          .replace(/1/g, "i")
+          .replace(/3/g, "e")
+          .replace(/5/g, "s")
+          .replace(/7/g, "t")
+          .replace(/\$/g, "s")
+          .replace(/\+/g, "t")
+          // cuối cùng mới xoá hết ký tự còn lại
+          .replace(/[^a-z0-9]/g, "")
+          .trim();
+
+      const normalizeWord = (word) =>
+        (word || "")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/0/g, "o")
+          .replace(/1/g, "i")
+          .replace(/3/g, "e")
+          .replace(/5/g, "s")
+          .replace(/7/g, "t")
+          .replace(/\$/g, "s")
+          .replace(/\+/g, "t")
+          .replace(/[^a-z0-9]/g, "")
+          .trim();
+
+
+      const normalizedBadWords = badWordsVi.map(normalizeWord);
+      const messageWords = message.split(/\s+/).map(normalizeWord).filter(Boolean);
+      const fullNormalizedMessage = normalizeFullMessage(message);
+
+
+      let foundBad = null;
+      for (let i = 0; i < messageWords.length; i++) {
+        const word = messageWords[i];
+        if (normalizedBadWords.includes(word)) {
+          const prevWord = messageWords[i - 1] || "";
+          const prev2Word = messageWords[i - 2] || "";
+
+
+          if (["khong", "chong", "chang", "cha"].includes(prevWord) || ["khong", "chong", "chang", "cha"].includes(prev2Word)) {
+            continue;
+          }
+
+
+          if (prevWord === "rat" || prevWord === "kha") {
+            continue;
+          }
+
+
+          foundBad = word;
+          break;
+        }
+      }
+
+
+      if (!foundBad) {
+        foundBad = normalizedBadWords
+          .filter((bad) => bad.length >= 4)
+          .find((bad) => fullNormalizedMessage.includes(bad));
+      }
+
+      if (foundBad) {
+        toast.error("Nội dung đánh giá chứa từ ngữ phản cảm. Vui lòng chỉnh sửa.");
         return;
       }
-    }
 
-    const existingComment = comments.find(
-      (c) => c.user_id === userId && c.order_detail_id == orderDetailId
-    );
-
-    if (existingComment) {
-      if (existingComment.edited) {
-        toast.warning("Bạn chỉ được chỉnh sửa đánh giá một lần.");
-
+      if (!orderDetailId) {
+        toast.error("Không thể gửi đánh giá do thiếu mã chi tiết đơn hàng.");
         return;
       }
 
-      await axios.put(`https://web-dong-ho-be.onrender.com/comments/${existingComment.id}`, {
-        rating,
-        comment_text: message,
-        images: imageUrls,
-        edited: true,
-      });
 
-      toast.success("Đã cập nhật đánh giá");
+      setReviewLoading(true);
+      let imageUrls = [];
+      if (imageFiles?.length > 0) {
+        imageUrls = await handleImageUploads(imageFiles);
+        if (!imageUrls) {
+          setReviewLoading(false);
+          return;
+        }
+      }
 
-    } else {
-      const payload = {
-        user_id: userId,
-        rating,
-        comment_text: message,
-        order_detail_id: Number(orderDetailId),
-        images: imageUrls,
-      };
-      await axios.post("https://web-dong-ho-be.onrender.com/comments", payload);
-      toast.success("Đánh giá thành công! Cảm ơn bạn đã đánh giá.");
+      const existingComment = comments.find(
+        (c) => c.user_id === userId && c.order_detail_id == orderDetailId
+      );
 
+      if (existingComment) {
+        if (existingComment.edited) {
+          toast.warning("Bạn chỉ được chỉnh sửa đánh giá một lần.");
+          return;
+        }
+
+        await axios.put(`https://web-dong-ho-be.onrender.com/comments/${existingComment.id}`, {
+          rating,
+          comment_text: message,
+          images: imageUrls,
+          edited: true,
+        });
+
+        toast.success("Đã cập nhật đánh giá");
+
+      } else {
+        const payload = {
+          user_id: userId,
+          rating,
+          comment_text: message,
+          order_detail_id: Number(orderDetailId),
+          images: imageUrls,
+        };
+        await axios.post("https://web-dong-ho-be.onrender.com/comments", payload);
+        toast.success("Đánh giá thành công! Cảm ơn bạn đã đánh giá.");
+      }
+
+      setMessage("");
+      setRating(0);
+      setHoverRating(0);
+      setImageFiles([]);
+      setOrderDetailId(null);
+      fetchComments();
+    } catch (error) {
+      console.error("Lỗi khi gửi/chỉnh sửa bình luận:", error);
+      toast.error("Ảnh không phù hợp với tiêu chuẩn cộng đồng. Vui lòng thử lại.");
+    } finally {
+      setReviewLoading(false);
     }
-
-    // Reset form
-    setMessage("");
-    setRating(0);
-    setHoverRating(0);
-    setImageFiles([]);
-    setOrderDetailId(null);
-    fetchComments();
-  } catch (error) {
-    console.error("Lỗi khi gửi/chỉnh sửa bình luận:", error);
-toast.error("Ảnh không phù hợp với tiêu chuẩn cộng đồng. Vui lòng thử lại.");
-
-  } finally {
-    setReviewLoading(false);
-  }
-};
+  };
 
 
   const renderStars = (rating) => [...Array(5)].map((_, i) => (
@@ -479,11 +495,20 @@ toast.error("Ảnh không phù hợp với tiêu chuẩn cộng đồng. Vui lò
 
           <textarea
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(e) => {
+              if (e.target.value.length <= 30) {
+                setMessage(e.target.value);
+              }
+            }}
             rows="4"
-            placeholder="Nội dung đánh giá..."
+            placeholder="Nội dung đánh giá (tối đa 30 ký tự)..."
             className="w-full border p-4 rounded-md outline-none mb-6"
           ></textarea>
+
+          <p className="text-sm text-gray-500">
+            {message.length}/30 ký tự
+          </p>
+
 
           <div className="mb-6">
             <label className="block mb-2 text-sm font-medium text-qblack">Tải hình ảnh (tối đa 3):</label>
@@ -501,9 +526,8 @@ toast.error("Ảnh không phù hợp với tiêu chuẩn cộng đồng. Vui lò
               onChange={(e) => {
                 const files = Array.from(e.target.files);
                 if (files.length > 3) {
-toast.error("Chỉ được tải tối đa 3 ảnh. Vui lòng chọn lại ảnh.");
-
-                  e.target.value = null;
+                  toast.error("Chỉ được tải tối đa 3 ảnh. Vui lòng chọn lại ảnh.");
+                  e.target.value = null; // reset input nếu lỗi
                   return;
                 }
                 setImageFiles(files);
@@ -514,16 +538,33 @@ toast.error("Chỉ được tải tối đa 3 ảnh. Vui lòng chọn lại ản
             {imageFiles?.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-4">
                 {imageFiles.map((file, idx) => (
-                  <div key={idx} className="w-24 h-24 border rounded-md overflow-hidden">
+                  <div key={idx} className="relative w-24 h-24 border rounded-md overflow-hidden">
                     <img
                       src={URL.createObjectURL(file)}
                       alt={`Preview ${idx}`}
                       className="w-full h-full object-cover"
                     />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newFiles = imageFiles.filter((_, i) => i !== idx);
+                        setImageFiles(newFiles);
+
+                        // 🔑 reset input để có thể chọn lại file cũ
+                        const inputEl = document.getElementById("upload-images");
+                        if (inputEl) inputEl.value = "";
+                      }}
+                      className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] leading-none hover:bg-red-600"
+                    >
+                      ×
+                    </button>
                   </div>
                 ))}
               </div>
             )}
+
+
+
           </div>
 
           <div className="flex justify-end">
