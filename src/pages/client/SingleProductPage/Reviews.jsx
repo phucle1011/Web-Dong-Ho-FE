@@ -175,11 +175,15 @@ const ProductReviewSection = () => {
 
 
   const reviewAction = async () => {
+    if (reviewLoading) {
+      toast.warning("Đang xử lý, vui lòng chờ...");
+      return;
+    }
     if (!message || rating === 0) {
       toast.warning("Vui lòng nhập nội dung và chọn số sao trước khi gửi.");
       return;
     }
-
+    setReviewLoading(true);
     try {
       const response = await fetch("/badword.txt");
       const text = await response.text();
@@ -493,21 +497,21 @@ const ProductReviewSection = () => {
             </span>
           </div>
 
+
           <textarea
             value={message}
             onChange={(e) => {
-              if (e.target.value.length <= 30) {
+              if (e.target.value.length <= 100) {
                 setMessage(e.target.value);
+              } else {
+                toast.error("Nội dung đánh giá không được vượt quá 100 ký tự!");
               }
             }}
             rows="4"
-            placeholder="Nội dung đánh giá (tối đa 30 ký tự)..."
-            className="w-full border p-4 rounded-md outline-none mb-6"
-          ></textarea>
+            placeholder="Nội dung đánh giá (tối đa 100 ký tự)..."
+            className="w-full border p-4 rounded-md outline-none mb-1"
+          />
 
-          <p className="text-sm text-gray-500">
-            {message.length}/30 ký tự
-          </p>
 
 
           <div className="mb-6">
