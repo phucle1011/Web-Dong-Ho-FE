@@ -56,7 +56,6 @@ function CategoryCreate() {
             ...formData,
             name: formData.name.trim().replace(/\s+/g, " "),
             slug: generateSlug(formData.name),
-            description: formData.description.trim(),
         };
 
         try {
