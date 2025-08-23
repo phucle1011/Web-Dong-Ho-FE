@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import Constants from "../../../../Constants.jsx";
@@ -12,6 +12,8 @@ import { FaUserPlus } from 'react-icons/fa';
 function PromotionList() {
   const [userPage, setUserPage] = useState(1);
   const [promotions, setPromotions] = useState([]);
+  const initRef = useRef(false);
+  const reqIdRef = useRef(0);
   const [selectedPromotionId, setSelectedPromotionId] = useState(null);
   const [customers, setCustomers] = useState([]);
   const [selectedCustomerIds, setSelectedCustomerIds] = useState([]);
@@ -51,6 +53,8 @@ function PromotionList() {
   };
 
   useEffect(() => {
+    if (initRef.current) return;
+    initRef.current = true;
     fetchPromotions();
   }, []);
 
@@ -95,7 +99,7 @@ function PromotionList() {
       setIsAddUserModalOpen(false);
       setSelectedUsersToAdd([]);
       // Luôn làm mới danh sách khách hàng
-      fetchCustomersByPromotion(selectedPromoForAddUser);
+      fetchCustomersByPromotion(selectedPromotionId || selectedPromoForAddUser);
     } catch {
       toast.error("Không thể thêm người dùng.");
     }
@@ -118,6 +122,7 @@ function PromotionList() {
 
   const fetchCustomersByPromotion = async (promotionId) => {
     setLoadingCustomers(true);
+    const myId = ++reqIdRef.current;
     try {
       let allCustomers = [];
       let page = 1;
@@ -127,6 +132,7 @@ function PromotionList() {
         const res = await axios.get(`${Constants.DOMAIN_API}/admin/promotionusers/list`, {
           params: { promotionId, page, limit: 50 },
         });
+        if (myId !== reqIdRef.current) return;
         allCustomers = [...allCustomers, ...res.data.data];
         totalPages = res.data.pagination.totalPages;
         setTotalCustomers(res.data.pagination.totalRecords);
@@ -144,14 +150,14 @@ function PromotionList() {
   };
 
   const filteredPromotions = useMemo(() => {
-    const sortOrder = { active: 1, inactive: 2, expired: 3 };
+    const sortOrder = { active: 1, upcoming: 2, inactive: 3, exhausted: 4, expired: 5 };
     return promotions
       .filter(
         (promo) =>
           promo.name?.toLowerCase().includes(promotionSearchTerm.toLowerCase()) ||
           promo.code?.toLowerCase().includes(promotionSearchTerm.toLowerCase())
       )
-      .sort((a, b) => sortOrder[a.status] - sortOrder[b.status]);
+      .sort((a, b) => (sortOrder[a.status] ?? 99) - (sortOrder[b.status] ?? 99));
   }, [promotions, promotionSearchTerm]);
 
   const totalPromotionPages = Math.ceil(filteredPromotions.length / PROMOTIONS_PER_PAGE);
@@ -168,11 +174,21 @@ function PromotionList() {
     );
   }, [customers, searchTerm]);
 
+  useEffect(() => {
+    const tp = Math.max(1, Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE));
+    if (currentPage > tp) setCurrentPage(tp);
+  }, [filteredCustomers.length]);
+
   const totalPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE);
   const paginatedCustomers = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredCustomers.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredCustomers, currentPage]);
+
+  useEffect(() => {
+    const tpp = Math.max(1, Math.ceil(filteredPromotions.length / PROMOTIONS_PER_PAGE));
+    if (promotionPage > tpp) setPromotionPage(tpp);
+  }, [filteredPromotions.length]);
 
   const handleCheckboxChange = (id) => {
     setSelectedCustomerIds((prev) =>
