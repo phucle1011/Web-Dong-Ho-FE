@@ -142,7 +142,7 @@ const AppRoutes = () => {
           {/* <Route path="/checkout" element={<CheakoutPage />} /> */}
           <Route path="/contact" element={<Contact />} />
           <Route path="/faq" element={<Faq />} />
-          <Route path="/flash-sale" element={<FlashSale />} />
+          <Route path="/slideshow" element={<FlashSale />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/products-compaire" element={<ProductsCompaire />} />
           <Route path="/saller-page" element={<SallerPage />} />
