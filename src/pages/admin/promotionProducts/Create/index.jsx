@@ -29,12 +29,10 @@ const PromotionProductForm = ({ onSuccess }) => {
     formState: { errors },
   } = useForm();
 
-  // Số lượt còn lại của khuyến mãi đang chọn
   const remainingQty = selectedPromotion?.quantity
     ? Number(selectedPromotion.quantity)
     : 0;
 
-  // Hết lượt thì báo và khóa chọn biến thể
   useEffect(() => {
     if (!selectedPromotion) return;
     if (remainingQty <= 0) {
@@ -63,15 +61,13 @@ const PromotionProductForm = ({ onSuccess }) => {
   };
 
   const isSelectedPromoUpcoming = (() => {
-  if (!selectedPromotion?.start_date || !selectedPromotion?.end_date) return false;
-  const { status } = getPromotionStatus(
-    selectedPromotion.start_date,
-    selectedPromotion.end_date
-  );
-  return status === "Sắp bắt đầu";
-})();
-
-
+    if (!selectedPromotion?.start_date || !selectedPromotion?.end_date) return false;
+    const { status } = getPromotionStatus(
+      selectedPromotion.start_date,
+      selectedPromotion.end_date
+    );
+    return status === "Sắp bắt đầu";
+  })();
 
   const fetchPromotions = async () => {
     try {
@@ -165,7 +161,7 @@ const PromotionProductForm = ({ onSuccess }) => {
   }, []);
 
   const onSubmit = async (data) => {
-    if (isLoading) return; // Ngăn gửi trùng lặp
+    if (isLoading) return;
 
     const selectedPromotion = promotions.find(
       (p) => p.id === parseInt(data.promotion_id)
@@ -175,10 +171,14 @@ const PromotionProductForm = ({ onSuccess }) => {
       return;
     }
 
-    const totalVariants = data.product_variant_id.length;
-    if (totalVariants > selectedPromotion.quantity) {
+    // Tính tổng số lượng áp dụng từ variant_quantities
+    const totalQuantity = data.product_variant_id.reduce((sum, id) => {
+      return sum + (parseInt(variantQuantities[id]) || 1);
+    }, 0);
+
+    if (totalQuantity > selectedPromotion.quantity) {
       toast.error(
-        `Không thể thêm ${totalVariants} biến thể. Khuyến mãi chỉ còn ${selectedPromotion.quantity} lượt khả dụng.`
+        `Tổng số lượng áp dụng (${totalQuantity}) vượt quá số lượt khả dụng của khuyến mãi (${selectedPromotion.quantity}).`
       );
       return;
     }
@@ -202,25 +202,24 @@ const PromotionProductForm = ({ onSuccess }) => {
       return;
     }
 
-const usedVariants = data.product_variant_id.filter((id) =>
-  usedVariantIds.includes(parseInt(id))
-);
+    const usedVariants = data.product_variant_id.filter((id) =>
+      usedVariantIds.includes(parseInt(id))
+    );
 
-// Nếu khuyến mãi đang chọn KHÔNG phải "Sắp bắt đầu" thì mới chặn
-if (!isSelectedPromoUpcoming && usedVariants.length > 0) {
-  const variantDetails = usedVariants
-    .map((id) => {
-      const variant = productVariants.find((v) => v.id === parseInt(id));
-      return variant
-        ? `${variant.sku} (${variant.product?.name || "Tên không xác định"})`
-        : id;
-    })
-    .join(", ");
-  toast.error(
-    `Không thể thêm các biến thể sau vì chúng đã được sử dụng trong khuyến mãi khác: ${variantDetails}.`
-  );
-  return;
-}
+    if (!isSelectedPromoUpcoming && usedVariants.length > 0) {
+      const variantDetails = usedVariants
+        .map((id) => {
+          const variant = productVariants.find((v) => v.id === parseInt(id));
+          return variant
+            ? `${variant.sku} (${variant.product?.name || "Tên không xác định"})`
+            : id;
+        })
+        .join(", ");
+      toast.error(
+        `Không thể thêm các biến thể sau vì chúng đã được sử dụng trong khuyến mãi khác: ${variantDetails}.`
+      );
+      return;
+    }
 
     const payload = {
       promotion_id: parseInt(data.promotion_id),
@@ -239,10 +238,8 @@ if (!isSelectedPromoUpcoming && usedVariants.length > 0) {
 
       toast.success("Thêm sản phẩm khuyến mãi thành công!");
 
-      // Cập nhật lại dữ liệu
       await Promise.all([fetchPromotions(), fetchUsedVariantsAndPromotions()]);
 
-      // Cập nhật danh sách đã sử dụng
       setUsedVariantIds((prev) => [
         ...new Set([
           ...prev,
@@ -286,59 +283,41 @@ if (!isSelectedPromoUpcoming && usedVariants.length > 0) {
       setIsLoading(false);
     }
   };
-const availablePromotions = promotions.filter((promo) => {
-  const { status } = getPromotionStatus(promo.start_date, promo.end_date);
-  // Cho phép chọn nếu:
-  // - Chưa dùng, hoặc
-  // - Sắp bắt đầu (dù đã có dùng), và còn lượt
-  const allowWhenUpcoming = status === "Sắp bắt đầu";
-  const notUsed = !usedPromotionIds.includes(promo.id);
-  return (notUsed || allowWhenUpcoming) && promo.quantity > 0;
-});
 
+  const availablePromotions = promotions.filter((promo) => {
+    const { status } = getPromotionStatus(promo.start_date, promo.end_date);
+    const allowWhenUpcoming = status === "Sắp bắt đầu";
+    const notUsed = !usedPromotionIds.includes(promo.id);
+    return (notUsed || allowWhenUpcoming) && promo.quantity > 0;
+  });
 
-const availableVariants = productVariants
-  .filter((variant) => {
-    // Ẩn biến thể hết hàng
-    if (!variant.stock || Number(variant.stock) <= 0) return false;
-
-    // Nếu promo đang chọn KHÔNG phải "Sắp bắt đầu" => chặn biến thể đã dùng ở promo khác
-    if (!isSelectedPromoUpcoming && usedVariantIds.includes(variant.id)) return false;
-
-    // Áp ngưỡng tối thiểu giá (nếu có)
-    if (
-      selectedPromotion?.min_price_threshold &&
-      parseFloat(variant.price) < parseFloat(selectedPromotion.min_price_threshold)
-    ) {
-      return false;
-    }
-
-    // Không để finalPrice <= 0
-    if (selectedPromotion) {
-      const price = parseFloat(variant.price);
-      let finalPrice = price;
-      if (selectedPromotion.discount_type === "percentage") {
-        finalPrice = price * (1 - selectedPromotion.discount_value / 100);
-      } else if (selectedPromotion.discount_type === "fixed") {
-        finalPrice = price - selectedPromotion.discount_value;
+  const availableVariants = productVariants
+    .filter((variant) => {
+      if (!variant.stock || Number(variant.stock) <= 0) return false;
+      if (!isSelectedPromoUpcoming && usedVariantIds.includes(variant.id)) return false;
+      if (
+        selectedPromotion?.min_price_threshold &&
+        parseFloat(variant.price) < parseFloat(selectedPromotion.min_price_threshold)
+      ) {
+        return false;
       }
-      if (finalPrice <= 0) return false;
-    }
-
-    return true;
-  })
-  .map((variant) => ({
-    value: variant.id.toString(),
-    label: `${variant.sku} (${variant.product?.name}) – ${parseFloat(variant.price).toLocaleString("vi-VN")}₫`,
-    price: parseFloat(variant.price) || 0,
-  }));
-
-{isSelectedPromoUpcoming && (
-  <small className="text-xs text-blue-600">
-    Lưu ý: Bạn đang chọn khuyến mãi <b>Sắp bắt đầu</b>, nên có thể chọn lại biến thể đã dùng ở khuyến mãi khác. 
-    Hệ thống vẫn kiểm tra tồn kho tổng để tránh vượt quá stock.
-  </small>
-)}
+      if (selectedPromotion) {
+        const price = parseFloat(variant.price);
+        let finalPrice = price;
+        if (selectedPromotion.discount_type === "percentage") {
+          finalPrice = price * (1 - selectedPromotion.discount_value / 100);
+        } else if (selectedPromotion.discount_type === "fixed") {
+          finalPrice = price - selectedPromotion.discount_value;
+        }
+        if (finalPrice <= 0) return false;
+      }
+      return true;
+    })
+    .map((variant) => ({
+      value: variant.id.toString(),
+      label: `${variant.sku} (${variant.product?.name}) – ${parseFloat(variant.price).toLocaleString("vi-VN")}₫`,
+      price: parseFloat(variant.price) || 0,
+    }));
 
   useEffect(() => {
     if (selectedPromotion?.discount_type === "percentage") {
@@ -392,7 +371,6 @@ const availableVariants = productVariants
     };
   });
 
-  // Tạo object {id: 1} cho các id đã chọn để khởi tạo số lượng
   const initQuantitiesFor = (ids) => {
     const q = {};
     ids.forEach((id) => (q[id] = 1));
@@ -418,7 +396,6 @@ const availableVariants = productVariants
       );
     }
 
-    // Lấy tối đa remainingQty từ danh sách availableVariants
     const allIds = availableVariants.map((v) => v.value);
     const limitedIds = allIds.slice(0, remainingQty);
     const candidates = availableVariants
@@ -437,8 +414,6 @@ const availableVariants = productVariants
     setValue("product_variant_id", newIds);
     setVariantQuantities((prev) => {
       const merged = { ...prev, ...initQuantitiesFor(newIds) };
-
-      // đảm bảo không vượt stock khi render nhập số lượng
       return merged;
     });
     trigger("product_variant_id");

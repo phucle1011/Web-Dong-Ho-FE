@@ -332,13 +332,13 @@ const PromotionProductList = () => {
             />
           </svg>
         </button>
-        <button
+        {/* <button
           onClick={handleClearSearch}
           className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-1.5 rounded"
           title="Xóa tìm kiếm"
         >
           Xóa
-        </button>
+        </button> */}
       </div>
 
       {loading && <div className="text-center py-4">Đang tải...</div>}
