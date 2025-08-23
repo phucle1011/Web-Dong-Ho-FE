@@ -25,6 +25,9 @@ const PromotionProductEdit = () => {
   const [variantQuantities, setVariantQuantities] = useState({});
   const [maxDiscountValue, setMaxDiscountValue] = useState(0);
   const [isPromotionExpired, setIsPromotionExpired] = useState(false);
+  // SỬA: Thêm state để theo dõi tổng số lượt và số lượt còn lại
+  const [totalQuantities, setTotalQuantities] = useState(0);
+  const [remainingQuota, setRemainingQuota] = useState(0);
 
   const {
     register,
@@ -205,7 +208,7 @@ const PromotionProductEdit = () => {
         const quantities = {};
         data.forEach((item) => {
           if (item.product_variant_id) {
-            const raw = item.variant_quantity; // có thể là 0
+            const raw = item.variant_quantity;
             const val =
               raw === undefined || raw === null ? 0 : parseInt(raw, 10);
             quantities[item.product_variant_id] = Number.isNaN(val) ? 0 : val;
@@ -235,6 +238,18 @@ const PromotionProductEdit = () => {
           min_price_threshold: parseFloat(promotion.min_price_threshold) || 0,
         });
         setValue("promotion_id", id.toString());
+
+        // SỬA: Tính tổng số lượt và số lượt còn lại
+        const total = Object.values(quantities).reduce(
+          (sum, qty) => sum + (Number.isInteger(qty) ? qty : 0),
+          0
+        );
+        setTotalQuantities(total);
+        setRemainingQuota(
+          promotion.quantity !== null && promotion.quantity !== undefined
+            ? Math.max(0, promotion.quantity - total)
+            : Infinity
+        );
 
         trigger("product_variant_id");
       } catch (err) {
@@ -269,6 +284,21 @@ const PromotionProductEdit = () => {
       trigger("product_variant_id");
     }
   }, [existingVariantIds, setValue, trigger]);
+
+  // SỬA: Cập nhật totalQuantities và remainingQuota khi variantQuantities thay đổi
+  useEffect(() => {
+    const total = Object.values(variantQuantities).reduce(
+      (sum, qty) => sum + (Number.isInteger(qty) ? qty : 0),
+      0
+    );
+    setTotalQuantities(total);
+    setRemainingQuota(
+      selectedPromotion?.quantity !== null &&
+        selectedPromotion?.quantity !== undefined
+        ? Math.max(0, selectedPromotion.quantity - total)
+        : Infinity
+    );
+  }, [variantQuantities, selectedPromotion]);
 
   const availableVariants = productVariants
     .filter((variant) => {
@@ -363,19 +393,34 @@ const PromotionProductEdit = () => {
       return;
     }
 
-const invalid = selectedVariantIds.filter((id) => {
-  const q = parseInt(variantQuantities[id] ?? 0, 10);
-  return Number.isNaN(q) || q < 0;   // <-- chỉ lỗi nếu < 0
-});
-if (invalid.length) {
-  const invalidNames = invalid.map((id) => {
-    const variant = productVariants.find((v) => v.id === parseInt(id));
-    return variant?.sku || id;
-  }).join(", ");
-  toast.error(`Vui lòng nhập số lượng hợp lệ (≥ 0) cho biến thể: ${invalidNames}`);
-  return;
-}
+    // SỬA: Kiểm tra tổng variantQuantities trước khi gửi
+    if (
+      selectedPromotion.quantity !== null &&
+      selectedPromotion.quantity !== undefined &&
+      totalQuantities > selectedPromotion.quantity
+    ) {
+      toast.error(
+        `Tổng số lượt áp dụng (${totalQuantities}) vượt quá giới hạn khuyến mãi (${selectedPromotion.quantity}).`
+      );
+      return;
+    }
 
+    const invalid = selectedVariantIds.filter((id) => {
+      const q = parseInt(variantQuantities[id] ?? 0, 10);
+      return Number.isNaN(q) || q < 0;
+    });
+    if (invalid.length) {
+      const invalidNames = invalid
+        .map((id) => {
+          const variant = productVariants.find((v) => v.id === parseInt(id));
+          return variant?.sku || id;
+        })
+        .join(", ");
+      toast.error(
+        `Vui lòng nhập số lượng hợp lệ (≥ 0) cho biến thể: ${invalidNames}`
+      );
+      return;
+    }
 
     const usedVariantsInOther = selectedVariants.filter(
       (variantId) =>
@@ -403,31 +448,16 @@ if (invalid.length) {
     setIsLoading(true);
     setError(null);
     try {
-      const invalid = selectedVariantIds.filter(
-        (id) => !variantQuantities[id] || variantQuantities[id] < 1
-      );
-      if (invalid.length) {
-        const invalidNames = invalid
-          .map((id) => {
-            const variant = productVariants.find((v) => v.id === parseInt(id));
-            return variant?.sku || id;
-          })
-          .join(", ");
-        toast.error(`Vui lòng nhập số lượng ≥ 1 cho biến thể: ${invalidNames}`);
-        return;
-      }
-
-   const payload = {
-  promotion_id: parseInt(id, 10),
-  products: selectedVariantIds.map((variantId) => {
-    const q = parseInt(variantQuantities[variantId] ?? 0, 10);
-    return {
-      product_variant_id: parseInt(variantId, 10),
-      variant_quantity: Number.isNaN(q) ? 0 : q, // <-- cho phép 0
-    };
-  }),
-};
-
+      const payload = {
+        promotion_id: parseInt(id, 10),
+        products: selectedVariantIds.map((variantId) => {
+          const q = parseInt(variantQuantities[variantId] ?? 0, 10);
+          return {
+            product_variant_id: parseInt(variantId, 10),
+            variant_quantity: Number.isNaN(q) ? 0 : q,
+          };
+        }),
+      };
 
       console.log("Payload gửi đi:", payload);
 
@@ -606,6 +636,15 @@ if (invalid.length) {
                       : selectedPromotion.quantity}
                   </strong>
                 </p>
+                {/* SỬA: Hiển thị số lượt còn lại */}
+                <p>
+                  Số lượt áp dụng còn lại:{" "}
+                  <strong>
+                    {remainingQuota === Infinity
+                      ? "Không giới hạn"
+                      : remainingQuota}
+                  </strong>
+                </p>
               </div>
             )}
             {isPromotionExpired && (
@@ -642,17 +681,15 @@ if (invalid.length) {
                   );
                   return;
                 }
-                console.log("Selected Variant IDs:", selectedIds); // Debug
+                console.log("Selected Variant IDs:", selectedIds);
                 setCustomFormState({ product_variant_id: selectedIds });
                 setSelectedVariantIds(selectedIds);
                 const newQuantities = {};
                 selectedIds.forEach((id) => {
                   newQuantities[id] = Number.isInteger(variantQuantities[id])
                     ? variantQuantities[id]
-                    : 0; // <-- mặc định 0 (không phải 1)
+                    : 0;
                 });
-                setVariantQuantities(newQuantities);
-
                 setVariantQuantities(newQuantities);
                 setValue("product_variant_id", selectedIds);
                 trigger("product_variant_id");
@@ -784,6 +821,16 @@ if (invalid.length) {
                         (v) => v.id === parseInt(id)
                       );
                       const stock = variant?.stock || 0;
+                      // SỬA: Tính max cho input dựa trên stock và remainingQuota
+                      const maxInputValue = Math.min(
+                        stock,
+                        remainingQuota === Infinity
+                          ? stock
+                          : remainingQuota +
+                              (Number.isInteger(variantQuantities[id])
+                                ? variantQuantities[id]
+                                : 0)
+                      );
 
                       return (
                         <tr
@@ -814,8 +861,8 @@ if (invalid.length) {
                           <td className="px-4 py-2 border text-center">
                             <input
                               type="number"
-                              min="0" // <-- cho phép 0
-                              max={stock}
+                              min="0"
+                              max={maxInputValue} // SỬA: Thêm max dựa trên stock và remainingQuota
                               value={
                                 Number.isInteger(variantQuantities[id])
                                   ? variantQuantities[id]
@@ -833,22 +880,33 @@ if (invalid.length) {
                                   ? variantQuantities[id]
                                   : 0;
                                 if (e.key === "ArrowUp") {
-                                  if (currentVal >= stock) {
+                                  const newVal = currentVal + 1;
+                                  if (newVal > stock) {
                                     e.preventDefault();
                                     toast.warning(
                                       `Số lượng không được vượt quá tồn kho (${stock})!`
                                     );
+                                  } else if (
+                                    totalQuantities - currentVal + newVal >
+                                    selectedPromotion.quantity
+                                  ) {
+                                    e.preventDefault();
+                                    toast.warning(
+                                      `Số lượt áp dụng không được vượt quá giới hạn khuyến mãi (${
+                                        selectedPromotion.quantity
+                                      })! Còn lại: ${remainingQuota} lượt.`
+                                    );
                                   } else {
                                     setVariantQuantities((prev) => ({
                                       ...prev,
-                                      [id]: currentVal + 1,
+                                      [id]: newVal,
                                     }));
                                     e.preventDefault();
                                   }
                                 }
                                 if (e.key === "ArrowDown") {
                                   if (currentVal <= 0) {
-                                    e.preventDefault(); // không cho âm
+                                    e.preventDefault();
                                   } else {
                                     setVariantQuantities((prev) => ({
                                       ...prev,
@@ -867,19 +925,50 @@ if (invalid.length) {
                                     ...prev,
                                     [id]: 0,
                                   }));
-                                } else if (val > stock) {
-                                  setVariantQuantities((prev) => ({
-                                    ...prev,
-                                    [id]: stock,
-                                  }));
-                                  toast.warning(
-                                    `Số lượng không được vượt quá tồn kho (${stock})!`
-                                  );
                                 } else {
-                                  setVariantQuantities((prev) => ({
-                                    ...prev,
-                                    [id]: val,
-                                  }));
+                                  const otherQuantities = Object.entries(
+                                    variantQuantities
+                                  ).reduce(
+                                    (sum, [vid, qty]) =>
+                                      vid !== id && Number.isInteger(qty)
+                                        ? sum + qty
+                                        : sum,
+                                    0
+                                  );
+                                  const newTotal = otherQuantities + val;
+                                  if (
+                                    selectedPromotion.quantity !== null &&
+                                    selectedPromotion.quantity !== undefined &&
+                                    newTotal > selectedPromotion.quantity
+                                  ) {
+                                    const maxAllowed = Math.max(
+                                      0,
+                                      selectedPromotion.quantity -
+                                        otherQuantities
+                                    );
+                                    setVariantQuantities((prev) => ({
+                                      ...prev,
+                                      [id]: maxAllowed,
+                                    }));
+                                    toast.warning(
+                                      `Số lượt áp dụng không được vượt quá giới hạn khuyến mãi (${
+                                        selectedPromotion.quantity
+                                      })! Đã đặt số lượng tối đa khả dụng: ${maxAllowed}.`
+                                    );
+                                  } else if (val > stock) {
+                                    setVariantQuantities((prev) => ({
+                                      ...prev,
+                                      [id]: stock,
+                                    }));
+                                    toast.warning(
+                                      `Số lượng không được vượt quá tồn kho (${stock})!`
+                                    );
+                                  } else {
+                                    setVariantQuantities((prev) => ({
+                                      ...prev,
+                                      [id]: val,
+                                    }));
+                                  }
                                 }
                               }}
                               className="border px-2 py-1 w-24 rounded text-center"

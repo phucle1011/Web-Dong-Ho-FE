@@ -27,6 +27,109 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
   const [isLoadingAttributes, setIsLoadingAttributes] = useState(false);
   const navigate = useNavigate();
 
+
+
+
+  // Cache theo khóa `${productId}:${variantId}`
+const hydrateCacheRef = useRef(new Map());
+// Theo dõi request đang bay để dedupe/hủy
+const inflightRef = useRef(new Map());
+// Chống spam toast lỗi hydrate
+const lastHydrateErrorAtRef = useRef(0);
+
+// sleep util
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+
+  const product = useMemo(() => datas || {}, [datas]);
+  const representativeVariant = useMemo(() => {
+    return product.representativeVariant || {};
+  }, [product.representativeVariant]);
+
+  const variants = useMemo(() => {
+    return product.variants || [];
+  }, [product.variants]);
+
+  const visibleVariants = useMemo(
+    () =>
+      variants.filter(
+        (v) =>
+          !(v.isInAuction || v.isAuctionOnly === 1 || v.is_auction_only === 1)
+      ),
+    [variants]
+  );
+
+  // Ưu tiên rating của variant, nếu thiếu thì lấy của product
+  const resolveRatings = (variant, product) => {
+    const vAvg = Number(variant?.averageRating);
+    const vCnt = Number(variant?.ratingCount);
+    const pAvg = Number(product?.averageRating);
+    const pCnt = Number(product?.ratingCount);
+
+    const avg =
+      Number.isFinite(vAvg) && vAvg > 0
+        ? vAvg
+        : Number.isFinite(pAvg) && pAvg > 0
+        ? pAvg
+        : 0;
+    const cnt =
+      Number.isFinite(vCnt) && vCnt > 0
+        ? vCnt
+        : Number.isFinite(pCnt) && pCnt > 0
+        ? pCnt
+        : 0;
+
+    return { avg, cnt };
+  };
+
+  useEffect(() => {
+    (async () => {
+      if (!product?.id || !selectedVariant?.id) return;
+
+      // Nếu variant đang chọn chưa có rating hoặc = 0, thì hydrate
+      const noVariantRatings =
+        !(
+          Number.isFinite(Number(selectedVariant.averageRating)) &&
+          Number(selectedVariant.averageRating) > 0
+        ) ||
+        !(
+          Number.isFinite(Number(selectedVariant.ratingCount)) &&
+          Number(selectedVariant.ratingCount) > 0
+        );
+
+      if (noVariantRatings) {
+        const full = await hydrateSelectedVariant(
+          product.id,
+          selectedVariant.id
+        );
+        if (full) {
+          setSelectedVariant((prev) => ({ ...prev, ...full }));
+          // Đồng bộ ảnh/thumbnail nếu cần
+          setVariantImages(full.images || []);
+          setSelectedImage(
+            full.images?.[0]?.image_url ||
+              product.thumbnail ||
+              "/images/no-image.jpg"
+          );
+          // Cập nhật rating cho card
+          const { avg, cnt } = resolveRatings(full, product);
+          setAvgRating(avg);
+          setRatingCount(cnt);
+        } else {
+          // Fallback về rating cấp sản phẩm để card vẫn có số sao
+          const { avg, cnt } = resolveRatings(selectedVariant, product);
+          setAvgRating(avg);
+          setRatingCount(cnt);
+        }
+      } else {
+        // Variant đã có rating -> set luôn cho card
+        const { avg, cnt } = resolveRatings(selectedVariant, product);
+        setAvgRating(avg);
+        setRatingCount(cnt);
+      }
+    })();
+  }, [product?.id, selectedVariant?.id]);
+
   const formatDiscountPercent = (original, sale) => {
     const o = Number(original) || 0;
     const s = Number(sale) || 0;
@@ -52,76 +155,106 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
     return byName || bySku || byAttrs || "";
   };
 
-  const hydrateSelectedVariant = async (productId, variantId) => {
-    if (!productId || !variantId) {
-      // console.error("Invalid productId or variantId", { productId, variantId });
-      toast.error("Dữ liệu sản phẩm không hợp lệ.");
+const hydrateSelectedVariant = async (productId, variantId) => {
+  if (!productId || !variantId) {
+    // Không toast ở đây để tránh spam
+    return null;
+  }
+
+  const key = `${productId}:${variantId}`;
+  // Cache hit
+  if (hydrateCacheRef.current.has(key)) {
+    return hydrateCacheRef.current.get(key);
+  }
+  // Dedupe: nếu đã có request đang chạy, chờ nó
+  if (inflightRef.current.has(key)) {
+    try {
+      return await inflightRef.current.get(key);
+    } catch {
       return null;
     }
+  }
 
-    try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get(`${Constants.DOMAIN_API}/products/getallnew`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        timeout: 5000,
-      });
+  // Tạo abort controller để hủy khi variant thay đổi
+  const controller = new AbortController();
 
-      // Find the product and variant in the response
-      const product = res.data?.data?.find((p) => p.id === productId);
-      const variant = product?.variants?.find((v) => v.id === variantId);
+  const run = (async () => {
+    const MAX_ATTEMPTS = 3;
+    // Tăng dần timeout: 5s -> 7.5s -> 10s
+    const baseTimeouts = [5000, 7500, 10000];
 
-      if (!product || !variant) {
-        console.error(`Variant ${variantId} not found for product ${productId}`);
-        toast.error("Không tìm thấy biến thể sản phẩm.");
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get(`${Constants.DOMAIN_API}/products/getallnew`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          timeout: baseTimeouts[attempt - 1],
+          signal: controller.signal,
+        });
+
+        const responseProduct = res.data?.data?.find((p) => p.id === productId);
+        const variant = responseProduct?.variants?.find((v) => v.id === variantId);
+
+        if (!responseProduct || !variant) {
+          // Không cache null; kết thúc sớm
+          return null;
+        }
+
+        const fullVariant = {
+          ...variant,
+          attributeValues: Array.isArray(variant.attributeValues)
+            ? variant.attributeValues.map((av) => ({
+                value: av.value || "",
+                attribute: { name: av.attribute?.name || "", ...av.attribute },
+              }))
+            : [],
+          images: Array.isArray(variant.images) ? variant.images : [],
+          price: parseFloat(variant.price) || 0,
+          stock: parseInt(variant.stock) || 0,
+          averageRating: parseFloat(variant.averageRating) || 0,
+          ratingCount: parseInt(variant.ratingCount) || 0,
+          promotion: variant.promotion || null,
+        };
+
+        // Cache kết quả tốt
+        hydrateCacheRef.current.set(key, fullVariant);
+        return fullVariant;
+      } catch (e) {
+        // Nếu bị abort do state đổi, dừng luôn
+        if (axios.isCancel?.(e) || e?.name === "CanceledError") return null;
+
+        const isTimeout =
+          e?.code === "ECONNABORTED" ||
+          e?.message?.toLowerCase?.().includes("timeout");
+
+        // Attempt tiếp theo với backoff
+        if (attempt < MAX_ATTEMPTS && (isTimeout || e?.response?.status >= 500)) {
+          await sleep(250 * attempt); // backoff nhẹ
+          continue;
+        }
+
+        // Chỉ hiển thị toast nếu lần lỗi cuối cùng cách >= 4s để tránh spam
+        const now = Date.now();
+        if (now - lastHydrateErrorAtRef.current > 4000) {
+          lastHydrateErrorAtRef.current = now;
+          toast.error("Không thể tải thông tin biến thể, sẽ dùng dữ liệu mặc định.");
+        }
+
         return null;
       }
-
-      // Normalize the variant data
-      const fullVariant = {
-        ...variant,
-        attributeValues: Array.isArray(variant.attributeValues)
-          ? variant.attributeValues.map((av) => ({
-              value: av.value || "",
-              attribute: {
-                name: av.attribute?.name || "",
-                ...av.attribute,
-              },
-            }))
-          : [],
-        images: Array.isArray(variant.images) ? variant.images : [],
-        price: parseFloat(variant.price) || 0,
-        stock: parseInt(variant.stock) || 0,
-        averageRating: parseFloat(variant.averageRating) || 0,
-        ratingCount: parseInt(variant.ratingCount) || 0,
-        promotion: variant.promotion || null,
-      };
-
-      return fullVariant;
-    } catch (e) {
-      console.error("Lỗi khi hydrate biến thể:", e);
-      toast.error("Không thể tải thông tin biến thể. Vui lòng thử lại.");
-      return null;
     }
-  };
+    return null;
+  })();
 
-  const product = useMemo(() => datas || {}, [datas]);
+  inflightRef.current.set(key, run);
 
-  const representativeVariant = useMemo(() => {
-    return product.representativeVariant || {};
-  }, [product.representativeVariant]);
+  const result = await run.finally(() => {
+    inflightRef.current.delete(key);
+  });
 
-  const variants = useMemo(() => {
-    return product.variants || [];
-  }, [product.variants]);
+  return result;
+};
 
-  const visibleVariants = useMemo(
-    () =>
-      variants.filter(
-        (v) =>
-          !(v.isInAuction || v.isAuctionOnly === 1 || v.is_auction_only === 1)
-      ),
-    [variants]
-  );
 
   useEffect(() => {
     if (variantImages.length > 0) {
@@ -158,7 +291,8 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
 
     if (sortedVariants.length > 0) {
       const validVariants = sortedVariants.filter(
-        (variant) => parseInt(variant.stock) > 0 && parseFloat(variant.price) > 0
+        (variant) =>
+          parseInt(variant.stock) > 0 && parseFloat(variant.price) > 0
       );
       const firstValidVariant = validVariants[0] || sortedVariants[0];
       setSelectedVariant(firstValidVariant);
@@ -168,8 +302,12 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
           product.thumbnail ||
           "/images/no-image.jpg"
       );
-      setAvgRating(parseFloat(firstValidVariant.averageRating) || 0);
-      setRatingCount(parseInt(firstValidVariant.ratingCount) || 0);
+
+      // Dùng resolveRatings thay vì set thủ công
+      const { avg, cnt } = resolveRatings(firstValidVariant, product);
+      setAvgRating(avg);
+      setRatingCount(cnt);
+
       checkWishlistStatus(firstValidVariant.id);
     } else {
       setSelectedVariant(null);
@@ -180,8 +318,10 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
 
   useEffect(() => {
     if (selectedVariant) {
-      setAvgRating(parseFloat(selectedVariant.averageRating) || 0);
-      setRatingCount(parseInt(selectedVariant.ratingCount) || 0);
+    const { avg, cnt } = resolveRatings(selectedVariant, product);
+setAvgRating(avg);
+setRatingCount(cnt);
+
       setVariantImages(selectedVariant.images || []);
       setSelectedImage(
         selectedVariant.images[0]?.image_url ||
@@ -199,7 +339,10 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
   const totalStock = useMemo(
     () =>
       parseInt(product.total_stock) ||
-      variants.reduce((sum, variant) => sum + (parseInt(variant.stock) || 0), 0),
+      variants.reduce(
+        (sum, variant) => sum + (parseInt(variant.stock) || 0),
+        0
+      ),
     [product, variants]
   );
 
@@ -211,7 +354,8 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
   const validVariants = useMemo(
     () =>
       visibleVariants.filter(
-        (variant) => parseInt(variant.stock) > 0 && parseFloat(variant.price) > 0
+        (variant) =>
+          parseInt(variant.stock) > 0 && parseFloat(variant.price) > 0
       ),
     [visibleVariants]
   );
@@ -239,7 +383,10 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
       if (discountType === "percentage" || discountType === "percent") {
         const pct = Math.max(
           0,
-          Math.min(100, toNum(pm?.discount_percent ?? pm?.discountPercent ?? pm?.percentage))
+          Math.min(
+            100,
+            toNum(pm?.discount_percent ?? pm?.discountPercent ?? pm?.percentage)
+          )
         );
         sale = original * (1 - pct / 100);
       } else if (
@@ -248,7 +395,9 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
         discountType === "fixed_amount" ||
         discountType === "currency"
       ) {
-        sale = original - Math.max(0, toNum(pm?.discount_amount ?? pm?.amount ?? pm?.value));
+        sale =
+          original -
+          Math.max(0, toNum(pm?.discount_amount ?? pm?.amount ?? pm?.value));
       } else {
         sale = original;
       }
@@ -278,6 +427,37 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
     };
   };
 
+  const betterDeal = (a, b) => {
+  if (!a) return b;
+  if (!b) return a;
+  const pa = computePricing(a);
+  const pb = computePricing(b);
+  if (pa.discountPercent !== pb.discountPercent) {
+    return pa.discountPercent > pb.discountPercent ? a : b;
+  }
+  if (pa.discountAmount !== pb.discountAmount) {
+    return pa.discountAmount > pb.discountAmount ? a : b;
+  }
+  if (pa.sale !== pb.sale) {
+    return pa.sale < pb.sale ? a : b;
+  }
+  const aStock = parseInt(a.stock) || 0;
+  const bStock = parseInt(b.stock) || 0;
+  return aStock >= bStock ? a : b;
+};
+
+const bestDealVariant = useMemo(() => {
+  if (validVariants.length === 0) return null;
+  return validVariants.reduce((best, v) => betterDeal(best, v), null);
+}, [validVariants]);
+
+const hasAutoPickedRef = useRef(false);
+useEffect(() => {
+  // Reset khóa khi đổi product
+  hasAutoPickedRef.current = false;
+}, [product?.id]);
+
+
   const priceInfo = useMemo(() => {
     const baseVariant = selectedVariant || representativeVariant || {};
     const { original, sale, discountAmount, discountType, discountPercent } =
@@ -294,55 +474,85 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
     };
   }, [selectedVariant, representativeVariant, purchasableStock]);
 
-  const { displayPrice, displayOriginalPrice, hasStock, discountPercent, discountAmount, discountType } = priceInfo;
+  const {
+    displayPrice,
+    displayOriginalPrice,
+    hasStock,
+    discountPercent,
+    discountAmount,
+    discountType,
+  } = priceInfo;
 
   const activeVariant = useMemo(
     () => selectedVariant || validVariants[0] || visibleVariants[0] || null,
     [selectedVariant, validVariants, visibleVariants]
   );
 
-  useEffect(() => {
-    if (!product.id) return;
+useEffect(() => {
+  if (!product.id) return;
 
-    if (visibleVariants.length === 0) {
-      setSelectedVariant(null);
-      setVariantImages([]);
-      setSelectedImage(product.thumbnail || "/images/no-image.jpg");
-      return;
-    }
+  if (visibleVariants.length === 0) {
+    setSelectedVariant(null);
+    setVariantImages([]);
+    setSelectedImage(product.thumbnail || "/images/no-image.jpg");
+    const { avg, cnt } = resolveRatings(null, product);
+    setAvgRating(avg);
+    setRatingCount(cnt);
+    return;
+  }
 
-    if (!selectedVariant || !visibleVariants.some((v) => v.id === selectedVariant.id)) {
-      const preferred = validVariants[0] || visibleVariants[0];
-      setSelectedVariant(preferred);
-      setVariantImages(preferred?.images || []);
-      setSelectedImage(
-        preferred?.images?.[0]?.image_url ||
-          product.thumbnail ||
-          "/images/no-image.jpg"
-      );
-      setAvgRating(parseFloat(preferred?.averageRating) || 0);
-      setRatingCount(parseInt(preferred?.ratingCount) || 0);
-      if (preferred?.id) checkWishlistStatus(preferred.id);
-    }
-  }, [product.id, visibleVariants, validVariants, selectedVariant]);
+  // Ảnh cover nhẹ
+  const coverImages = bestDealVariant?.images || visibleVariants[0]?.images || [];
+  setVariantImages(coverImages);
+  setSelectedImage(
+    product.thumbnail ||
+      coverImages?.[0]?.image_url ||
+      "/images/no-image.jpg"
+  );
 
-  const thumbnail = selectedImage || product.thumbnail?.trim() || "/images/no-image.jpg";
-  const productName = product.name?.trim() || product.title?.trim() || "Sản phẩm không tên";
-  const variantLabel = useMemo(() => getVariantLabel(selectedVariant), [selectedVariant]);
+  // Chỉ auto-pick 1 lần cho mỗi product
+  if (!selectedVariant && !hasAutoPickedRef.current) {
+    hasAutoPickedRef.current = true;
+    const toPick = bestDealVariant || validVariants[0] || visibleVariants[0];
+    setSelectedVariant(toPick);
+    const { avg, cnt } = resolveRatings(toPick, product);
+    setAvgRating(avg);
+    setRatingCount(cnt);
+    if (toPick?.id) checkWishlistStatus(toPick.id);
+  }
+}, [product, visibleVariants, validVariants, bestDealVariant, selectedVariant]);
+
 
   const shortenText = (text, maxLength) => {
     if (!text) return "";
     return text.length > maxLength ? text.slice(0, maxLength) + "..." : text;
   };
 
-  const displayName = variantLabel ? `${shortenText(productName, 20)} - ${variantLabel}` : productName;
+  
+
+const thumbnail =
+  selectedImage || product.thumbnail?.trim() || "/images/no-image.jpg";
+
+const productName =
+  product.name?.trim() || product.title?.trim() || "Sản phẩm không tên";
+
+const variantLabel = useMemo(() => getVariantLabel(selectedVariant), [selectedVariant]);
+
+const displayName = variantLabel
+  ? `${shortenText(productName, 20)} - ${variantLabel}`
+  : productName;
+
+
 
   const maxStock = 5;
-  const stockPercentage = totalStock > 0 ? Math.min((totalStock / maxStock) * 100, 100) : 0;
+  const stockPercentage =
+    totalStock > 0 ? Math.min((totalStock / maxStock) * 100, 100) : 0;
 
   const handleAddToCart = async (variantId, quantity) => {
     if (selectedVariant?.isInAuction) {
-      toast.error("Sản phẩm đang trong phiên đấu giá, không thể thêm vào giỏ hàng.");
+      toast.error(
+        "Sản phẩm đang trong phiên đấu giá, không thể thêm vào giỏ hàng."
+      );
       return;
     }
     if (!variantId) {
@@ -400,10 +610,13 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
       return;
     }
     if (quantity > (selectedVariant?.stock || totalStock)) {
-      toast.error(`Chỉ còn ${selectedVariant?.stock || totalStock} sản phẩm trong kho`);
+      toast.error(
+        `Chỉ còn ${selectedVariant?.stock || totalStock} sản phẩm trong kho`
+      );
       return;
     }
-    const variantToAdd = selectedVariant || (validVariants.length > 0 ? validVariants[0] : null);
+    const variantToAdd =
+      selectedVariant || (validVariants.length > 0 ? validVariants[0] : null);
     if (variantToAdd && !isAuction) {
       handleAddToCart(variantToAdd.id, quantity);
     } else {
@@ -412,11 +625,13 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
   };
 
   const handleVariantSelect = async (variant) => {
-    if (!variant || selectedVariant?.id === variant.id || variant.stock <= 0) return;
+    if (!variant || selectedVariant?.id === variant.id || variant.stock <= 0)
+      return;
 
     let next = variant;
     const needHydrate =
-      !Array.isArray(variant.attributeValues) || variant.attributeValues.length === 0;
+      !Array.isArray(variant.attributeValues) ||
+      variant.attributeValues.length === 0;
 
     if (needHydrate) {
       setIsLoadingAttributes(true);
@@ -430,10 +645,16 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
     const newImages = next.images || [];
     setVariantImages(newImages);
     setSelectedImage(
-      newImages.length > 0 ? newImages[0].image_url || product.thumbnail : product.thumbnail
+      newImages.length > 0
+        ? newImages[0].image_url || product.thumbnail
+        : product.thumbnail
     );
-    setAvgRating(parseFloat(next.averageRating || 0));
-    setRatingCount(parseInt(next.ratingCount || 0));
+
+    // Dùng resolveRatings để đồng bộ rating
+    const { avg, cnt } = resolveRatings(next, product);
+    setAvgRating(avg);
+    setRatingCount(cnt);
+
     checkWishlistStatus(next.id);
     setCurrentImageIndex(0);
   };
@@ -476,7 +697,9 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
     const userId = decoded?.id;
 
     if (!token || !userId) {
-      toast.error("Bạn cần đăng nhập để thêm sản phẩm vào danh sách yêu thích.");
+      toast.error(
+        "Bạn cần đăng nhập để thêm sản phẩm vào danh sách yêu thích."
+      );
       return;
     }
 
@@ -485,12 +708,15 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
         userId,
         productVariantId: selectedVariant.id,
       });
-      toast.success(response.data.message || "Đã thêm vào danh sách yêu thích!");
+      toast.success(
+        response.data.message || "Đã thêm vào danh sách yêu thích!"
+      );
       setIsInWishlist(true);
       await checkWishlistStatus(selectedVariant.id);
     } catch (error) {
       const errorMessage =
-        error.response?.data?.message || "Lỗi khi thêm vào danh sách yêu thích.";
+        error.response?.data?.message ||
+        "Lỗi khi thêm vào danh sách yêu thích.";
       toast.error(errorMessage);
     }
   };
@@ -506,7 +732,9 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
     const userId = decoded?.id;
 
     if (!token || !userId) {
-      toast.error("Bạn cần đăng nhập để xóa sản phẩm khỏi danh sách yêu thích.");
+      toast.error(
+        "Bạn cần đăng nhập để xóa sản phẩm khỏi danh sách yêu thích."
+      );
       return;
     }
 
@@ -522,7 +750,8 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
       await checkWishlistStatus(selectedVariant.id);
     } catch (error) {
       const errorMessage =
-        error.response?.data?.message || "Lỗi khi xóa khỏi danh sách yêu thích.";
+        error.response?.data?.message ||
+        "Lỗi khi xóa khỏi danh sách yêu thích.";
       toast.error(errorMessage);
     }
   };
@@ -532,7 +761,9 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
   useEffect(() => {
     (async () => {
       if (!isQuickViewOpen || !product?.id || !selectedVariant?.id) return;
-      const hasAttrs = Array.isArray(selectedVariant.attributeValues) && selectedVariant.attributeValues.length > 0;
+      const hasAttrs =
+        Array.isArray(selectedVariant.attributeValues) &&
+        selectedVariant.attributeValues.length > 0;
       if (hasAttrs) return;
 
       setIsLoadingAttributes(true);
@@ -541,7 +772,9 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
         setSelectedVariant((prev) => ({ ...prev, ...full }));
         setVariantImages(full.images || []);
         setSelectedImage(
-          full.images?.[0]?.image_url || product.thumbnail || "/images/no-image.jpg"
+          full.images?.[0]?.image_url ||
+            product.thumbnail ||
+            "/images/no-image.jpg"
         );
         setAvgRating(parseFloat(full.averageRating || 0));
         setRatingCount(parseInt(full.ratingCount || 0));
@@ -634,7 +867,9 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
                   key={img.id || img.image_url}
                   onClick={() => setSelectedImage(img.image_url)}
                   className={`w-[60px] h-[60px] p-1 border rounded-md cursor-pointer ${
-                    selectedImage === img.image_url ? "border-blue-500" : "border-gray-200"
+                    selectedImage === img.image_url
+                      ? "border-blue-500"
+                      : "border-gray-200"
                   } hover:border-blue-400 transition-colors`}
                 >
                   <img
@@ -647,7 +882,9 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
             </div>
           </div>
           <div className="flex flex-col space-y-3">
-            <h2 className="text-lg font-semibold text-gray-800 line-clamp-2">{displayName}</h2>
+            <h2 className="text-lg font-semibold text-gray-800 line-clamp-2">
+              {displayName}
+            </h2>
             <div className="flex items-center gap-2 mb-2">
               <StarRating rating={avgRating} readOnly />
               <span className="text-sm text-gray-600">
@@ -656,11 +893,18 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
             </div>
             {visibleVariants.length > 0 && (
               <div>
-                <span className="block text-xs font-medium text-gray-600 mb-1">Biến thể:</span>
+                <span className="block text-xs font-medium text-gray-600 mb-1">
+                  Biến thể:
+                </span>
                 <div className="grid grid-cols-2 gap-2">
                   {visibleVariants.map((variant) => {
-                    const { original, sale, discountAmount, discountPercent, discountType } =
-                      computePricing(variant);
+                    const {
+                      original,
+                      sale,
+                      discountAmount,
+                      discountPercent,
+                      discountType,
+                    } = computePricing(variant);
                     const inStock = variant.stock > 0;
                     const inAuction = variant.isInAuction;
                     const isSelected = selectedVariant?.id === variant.id;
@@ -676,20 +920,30 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
                             : "border-gray-300 hover:bg-gray-100 text-gray-800"
                         }`}
                         onClick={() => {
-                          if (inStock && !inAuction) handleVariantSelect(variant);
+                          if (inStock && !inAuction)
+                            handleVariantSelect(variant);
                         }}
                         disabled={!inStock || inAuction}
-                        title={inAuction ? "Biến thể đang trong phiên đấu giá" : undefined}
+                        title={
+                          inAuction
+                            ? "Biến thể đang trong phiên đấu giá"
+                            : undefined
+                        }
                       >
-                        <p className="font-medium">{variant.name || variant.sku || "Unnamed"}</p>
-                        <p className="text-qred font-semibold">{sale.toLocaleString("vi-VN")}₫</p>
+                        <p className="font-medium">
+                          {variant.name || variant.sku || "Unnamed"}
+                        </p>
+                        <p className="text-qred font-semibold">
+                          {sale.toLocaleString("vi-VN")}₫
+                        </p>
                         {sale < original && (
                           <div className="flex items-center justify-center space-x-1">
                             <p className="text-qgray line-through text-[10px]">
                               {original.toLocaleString("vi-VN")}₫
                             </p>
                             <span className="text-white text-[10px] font-semibold bg-qred px-1 rounded">
-                              {discountType === "percentage" || discountType === "percent"
+                              {discountType === "percentage" ||
+                              discountType === "percent"
                                 ? `-${discountPercent}%`
                                 : `-${discountAmount.toLocaleString("vi-VN")}₫`}
                             </span>
@@ -707,7 +961,9 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
                   })}
                 </div>
                 {isLoadingAttributes ? (
-                  <div className="mt-2 text-gray-600 text-sm">Đang tải thuộc tính...</div>
+                  <div className="mt-2 text-gray-600 text-sm">
+                    Đang tải thuộc tính...
+                  </div>
                 ) : attributes.length > 0 ? (
                   <div className="mt-2">
                     <span className="block text-xs font-medium text-gray-600 mb-1">
@@ -715,14 +971,18 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
                     </span>
                     <table className="w-full text-[12px] border border-gray-200 rounded">
                       <tbody>
-                        {(isExpanded ? attributes : attributes.slice(0, 4)).map((av, i) => (
-                          <tr key={i} className="border-t">
-                            <td className="px-2 py-1 text whitespace-nowrap">
-                              <b>{av?.attribute?.name || "-"}</b>
-                            </td>
-                            <td className="px-2 py-1 break-words">{av?.value || "-"}</td>
-                          </tr>
-                        ))}
+                        {(isExpanded ? attributes : attributes.slice(0, 4)).map(
+                          (av, i) => (
+                            <tr key={i} className="border-t">
+                              <td className="px-2 py-1 text whitespace-nowrap">
+                                <b>{av?.attribute?.name || "-"}</b>
+                              </td>
+                              <td className="px-2 py-1 break-words">
+                                {av?.value || "-"}
+                              </td>
+                            </tr>
+                          )
+                        )}
                       </tbody>
                     </table>
                     {attributes.length > 4 && (
@@ -730,12 +990,16 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
                         className="mt-1 text-dark-600 hover:underline text-[12px]"
                         onClick={() => setIsExpanded((v) => !v)}
                       >
-                        {isExpanded ? "Thu gọn" : `Xem thêm ${attributes.length - 4}`}
+                        {isExpanded
+                          ? "Thu gọn"
+                          : `Xem thêm ${attributes.length - 4}`}
                       </button>
                     )}
                   </div>
                 ) : (
-                  <div className="mt-2 text-gray-600 text-sm">Không có thuộc tính biến thể</div>
+                  <div className="mt-2 text-gray-600 text-sm">
+                    Không có thuộc tính biến thể
+                  </div>
                 )}
               </div>
             )}
@@ -743,7 +1007,10 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
               {hasStock ? (
                 <div className="price-container flex flex-col gap-1">
                   <span className="text-qred font-semibold text-[18px]">
-                    {displayPrice.toLocaleString("vi-VN", { style: "currency", currency: "VND" })}
+                    {displayPrice.toLocaleString("vi-VN", {
+                      style: "currency",
+                      currency: "VND",
+                    })}
                   </span>
                   {displayOriginalPrice > displayPrice && (
                     <span className="text-qgray line-through text-[16px]">
@@ -755,7 +1022,9 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
                   )}
                 </div>
               ) : (
-                <p className="text-qred font-600 text-[16px]">Sản phẩm hết hàng</p>
+                <p className="text-qred font-600 text-[16px]">
+                  Sản phẩm hết hàng
+                </p>
               )}
             </div>
             {hasStock && (
@@ -767,7 +1036,8 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
                     const scrollTop = dialogRef.current?.scrollTop;
                     setQuantity((prev) => Math.max(1, prev - 1));
                     setTimeout(() => {
-                      if (dialogRef.current) dialogRef.current.scrollTop = scrollTop;
+                      if (dialogRef.current)
+                        dialogRef.current.scrollTop = scrollTop;
                     }, 0);
                   }}
                   disabled={quantity <= 1 || !hasStock}
@@ -782,11 +1052,15 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
                     setQuantity(
                       Math.max(
                         1,
-                        Math.min(selectedVariant?.stock || totalStock, Number(e.target.value))
+                        Math.min(
+                          selectedVariant?.stock || totalStock,
+                          Number(e.target.value)
+                        )
                       )
                     );
                     setTimeout(() => {
-                      if (dialogRef.current) dialogRef.current.scrollTop = scrollTop;
+                      if (dialogRef.current)
+                        dialogRef.current.scrollTop = scrollTop;
                     }, 0);
                   }}
                   className="w-12 text-center border border-gray-300 rounded text-sm"
@@ -804,10 +1078,14 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
                       Math.min(selectedVariant?.stock || totalStock, prev + 1)
                     );
                     setTimeout(() => {
-                      if (dialogRef.current) dialogRef.current.scrollTop = scrollTop;
+                      if (dialogRef.current)
+                        dialogRef.current.scrollTop = scrollTop;
                     }, 0);
                   }}
-                  disabled={quantity >= (selectedVariant?.stock || totalStock) || !hasStock}
+                  disabled={
+                    quantity >= (selectedVariant?.stock || totalStock) ||
+                    !hasStock
+                  }
                 >
                   +
                 </button>
@@ -818,20 +1096,30 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
                 type="button"
                 onClick={addToCart}
                 className={`flex-1 py-2 bg-blue-600 text-white text-sm font-medium rounded uppercase tracking-wide hover:bg-blue-700 transition-colors duration-200 ${
-                  !hasStock || (visibleVariants.length > 0 && !selectedVariant) || selectedVariant?.isInAuction
+                  !hasStock ||
+                  (visibleVariants.length > 0 && !selectedVariant) ||
+                  selectedVariant?.isInAuction
                     ? "opacity-50 cursor-not-allowed"
                     : ""
                 }`}
                 disabled={
-                  !hasStock || (visibleVariants.length > 0 && !selectedVariant) || selectedVariant?.isInAuction
+                  !hasStock ||
+                  (visibleVariants.length > 0 && !selectedVariant) ||
+                  selectedVariant?.isInAuction
                 }
-                title={selectedVariant?.isInAuction ? "Biến thể đang trong phiên đấu giá" : undefined}
+                title={
+                  selectedVariant?.isInAuction
+                    ? "Biến thể đang trong phiên đấu giá"
+                    : undefined
+                }
               >
                 <FiShoppingCart size={18} className="inline mr-2" />
                 Thêm giỏ hàng
               </button>
               <button
-                onClick={isInWishlist ? handleRemoveFromWishlist : handleAddToWishlist}
+                onClick={
+                  isInWishlist ? handleRemoveFromWishlist : handleAddToWishlist
+                }
                 className="px-3 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
               >
                 <ThinLove
@@ -886,12 +1174,16 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
           <button
             type="button"
             className={`bg-blue-600 hover:bg-blue-700 text-white w-full h-full flex items-center justify-center gap-2 ${
-              !hasStock || (visibleVariants.length > 0 && !selectedVariant) || selectedVariant?.isInAuction
+              !hasStock ||
+              (visibleVariants.length > 0 && !selectedVariant) ||
+              selectedVariant?.isInAuction
                 ? "opacity-50 cursor-not-allowed"
                 : ""
             }`}
             disabled={
-              !hasStock || (visibleVariants.length > 0 && !selectedVariant) || selectedVariant?.isInAuction
+              !hasStock ||
+              (visibleVariants.length > 0 && !selectedVariant) ||
+              selectedVariant?.isInAuction
             }
             title={
               selectedVariant?.isInAuction
@@ -906,13 +1198,16 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
         </div>
         <div className="flex items-center gap-2 mb-2">
           <StarRating rating={avgRating} readOnly />
-          <span className="text-sm text-gray-600">{ratingCount > 0 ? `(${ratingCount})` : ""}</span>
+          <span className="text-sm text-gray-600">
+            {ratingCount > 0 ? `(${ratingCount})` : ""}
+          </span>
         </div>
         <p
           className="title mb-2 text-[15px] font-600 text-qblack leading-[24px] line-clamp-2 hover:text-blue-600 cursor-pointer"
           onClick={handleNavigate}
         >
-          {displayName.replace(/ - /, " (") + (displayName.includes(" - ") ? ")" : "")}
+          {displayName.replace(/ - /, " (") +
+            (displayName.includes(" - ") ? ")" : "")}
         </p>
         <div className="price-container-wrapper group-hover:hidden transition-opacity duration-300">
           {hasStock ? (
@@ -920,7 +1215,9 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
               <div className="price flex items-center space-x-2">
                 <span
                   className={`${
-                    displayOriginalPrice > displayPrice ? "text-qred" : "text-qblack"
+                    displayOriginalPrice > displayPrice
+                      ? "text-qred"
+                      : "text-qblack"
                   } font-600 text-[18px]`}
                 >
                   {Number(displayPrice).toLocaleString("vi-VN", {
@@ -990,14 +1287,19 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
               attributeValues: variant.attributeValues,
             }));
             const clickedVariant = allVariants.find(
-              (v) => v.productId === product.id && v.variantId === (selectedVariant?.id || variants?.[0]?.id)
+              (v) =>
+                v.productId === product.id &&
+                v.variantId === (selectedVariant?.id || variants?.[0]?.id)
             );
             if (!clickedVariant) {
               toast.error("Sản phẩm không có biến thể hợp lệ để so sánh.");
               return;
             }
-            const current = JSON.parse(localStorage.getItem("compareList")) || [];
-            const exists = current.find((item) => item.variantId === clickedVariant.variantId);
+            const current =
+              JSON.parse(localStorage.getItem("compareList")) || [];
+            const exists = current.find(
+              (item) => item.variantId === clickedVariant.variantId
+            );
             if (!exists) {
               const updated = [...current, clickedVariant].slice(0, 4);
               localStorage.setItem("compareList", JSON.stringify(updated));
