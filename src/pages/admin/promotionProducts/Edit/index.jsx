@@ -359,140 +359,155 @@ const PromotionProductEdit = () => {
     }
   }, [availableVariants, selectedPromotion]);
 
-  const onSubmit = async (formData) => {
-    if (isPromotionExpired) {
-      toast.error(
-        "Khuyến mãi đã hết hạn sử dụng, không thể cập nhật khuyến mãi!"
-      );
-      return;
-    }
+const onSubmit = async (formData) => {
+  if (isPromotionExpired) {
+    toast.error("Khuyến mãi đã hết hạn sử dụng, không thể cập nhật khuyến mãi!");
+    return;
+  }
 
-    const selectedVariants = formData.product_variant_id || [];
-    if (!selectedVariants.length) {
-      toast.error("Vui lòng chọn ít nhất một biến thể sản phẩm!");
-      return;
-    }
+  const selectedVariants = formData.product_variant_id || [];
+  if (!selectedVariants.length) {
+    toast.error("Vui lòng chọn ít nhất một biến thể sản phẩm!");
+    return;
+  }
 
-    const selectedPromotion = promotions.find(
-      (p) => p.id === parseInt(formData.promotion_id)
+  const selectedPromotion = promotions.find(
+    (p) => p.id === parseInt(formData.promotion_id)
+  );
+  if (!selectedPromotion) {
+    toast.error("Không tìm thấy thông tin khuyến mãi!");
+    return;
+  }
+
+  const totalVariants = selectedVariants.length;
+  if (
+    selectedPromotion.quantity !== null &&
+    selectedPromotion.quantity !== undefined &&
+    totalVariants > selectedPromotion.quantity
+  ) {
+    toast.error(
+      `Không thể chọn ${totalVariants} biến thể. Khuyến mãi chỉ cho phép tối đa ${selectedPromotion.quantity} biến thể.`
     );
-    if (!selectedPromotion) {
-      toast.error("Không tìm thấy thông tin khuyến mãi!");
-      return;
-    }
+    return;
+  }
 
-    const totalVariants = selectedVariants.length;
-    if (
-      selectedPromotion.quantity !== null &&
-      selectedPromotion.quantity !== undefined &&
-      totalVariants > selectedPromotion.quantity
-    ) {
-      toast.error(
-        `Không thể chọn ${totalVariants} biến thể. Khuyến mãi chỉ cho phép tối đa ${selectedPromotion.quantity} biến thể.`
-      );
-      return;
-    }
-
-    // SỬA: Kiểm tra tổng variantQuantities trước khi gửi
-    if (
-      selectedPromotion.quantity !== null &&
-      selectedPromotion.quantity !== undefined &&
-      totalQuantities > selectedPromotion.quantity
-    ) {
-      toast.error(
-        `Tổng số lượt áp dụng (${totalQuantities}) vượt quá giới hạn khuyến mãi (${selectedPromotion.quantity}).`
-      );
-      return;
-    }
-
-    const invalid = selectedVariantIds.filter((id) => {
-      const q = parseInt(variantQuantities[id] ?? 0, 10);
-      return Number.isNaN(q) || q < 0;
-    });
-    if (invalid.length) {
-      const invalidNames = invalid
-        .map((id) => {
-          const variant = productVariants.find((v) => v.id === parseInt(id));
-          return variant?.sku || id;
-        })
-        .join(", ");
-      toast.error(
-        `Vui lòng nhập số lượng hợp lệ (≥ 0) cho biến thể: ${invalidNames}`
-      );
-      return;
-    }
-
-    const usedVariantsInOther = selectedVariants.filter(
-      (variantId) =>
-        !existingVariantIds.includes(variantId) &&
-        usedVariantIds.includes(parseInt(variantId))
+  // Kiểm tra tổng số lượt áp dụng
+  if (
+    selectedPromotion.quantity !== null &&
+    selectedPromotion.quantity !== undefined &&
+    totalQuantities > selectedPromotion.quantity
+  ) {
+    toast.error(
+      `Tổng số lượt áp dụng (${totalQuantities}) vượt quá giới hạn khuyến mãi (${selectedPromotion.quantity}).`
     );
+    return;
+  }
 
-    if (usedVariantsInOther.length > 0) {
-      const variantDetails = usedVariantsInOther
-        .map((id) => {
-          const variant = productVariants.find((v) => v.id === parseInt(id));
-          return variant
-            ? `${variant.sku || "N/A"} (${
-                variant.product?.name || "Tên không xác định"
-              })`
-            : id;
-        })
-        .join(", ");
-      const confirmAdd = window.confirm(
-        `Các biến thể sau đã được sử dụng trong khuyến mãi khác: ${variantDetails}. Bạn có muốn xóa chúng khỏi các khuyến mãi khác và thêm vào khuyến mãi này không?`
-      );
-      if (!confirmAdd) return;
-    }
+  // Kiểm tra số lượng không hợp lệ
+  const invalid = selectedVariantIds.filter((id) => {
+    const q = parseInt(variantQuantities[id] ?? 0, 10);
+    return Number.isNaN(q) || q <= 0; // SỬA: Thêm q <= 0
+  });
+  if (invalid.length) {
+    const invalidNames = invalid
+      .map((id) => {
+        const variant = productVariants.find((v) => v.id === parseInt(id));
+        return variant?.sku || id;
+      })
+      .join(", ");
+    toast.error(
+      `Vui lòng nhập số lượng hợp lệ (> 0) cho biến thể: ${invalidNames}`
+    );
+    return;
+  }
 
-    setIsLoading(true);
-    setError(null);
-    try {
-      const payload = {
-        promotion_id: parseInt(id, 10),
-        products: selectedVariantIds.map((variantId) => {
-          const q = parseInt(variantQuantities[variantId] ?? 0, 10);
-          return {
-            product_variant_id: parseInt(variantId, 10),
-            variant_quantity: Number.isNaN(q) ? 0 : q,
-          };
-        }),
-      };
+  const usedVariantsInOther = selectedVariants.filter(
+    (variantId) =>
+      !existingVariantIds.includes(variantId) &&
+      usedVariantIds.includes(parseInt(variantId))
+  );
 
-      console.log("Payload gửi đi:", payload);
+  if (usedVariantsInOther.length > 0) {
+    const variantDetails = usedVariantsInOther
+      .map((id) => {
+        const variant = productVariants.find((v) => v.id === parseInt(id));
+        return variant
+          ? `${variant.sku || "N/A"} (${variant.product?.name || "Tên không xác định"})`
+          : id;
+      })
+      .join(", ");
+    const confirmAdd = window.confirm(
+      `Các biến thể sau đã được sử dụng trong khuyến mãi khác: ${variantDetails}. Bạn có muốn xóa chúng khỏi các khuyến mãi khác và thêm vào khuyến mãi này không?`
+    );
+    if (!confirmAdd) return;
+  }
 
-      await axios.put(`${Constants.DOMAIN_API}/admin/promotion/${id}`, payload);
+  setIsLoading(true);
+  setError(null);
+  try {
+    const payload = {
+      promotion_id: parseInt(id, 10),
+      products: selectedVariantIds.map((variantId) => {
+        const q = parseInt(variantQuantities[variantId] ?? 0, 10);
+        if (Number.isNaN(q) || q <= 0) {
+          throw new Error(`Số lượng không hợp lệ cho biến thể ${variantId}`);
+        }
+        return {
+          product_variant_id: parseInt(variantId, 10),
+          variant_quantity: q,
+        };
+      }),
+    };
 
-      setExistingVariantIds(selectedVariants);
-      setCustomFormState({ product_variant_id: selectedVariants });
-      setValue("product_variant_id", selectedVariants);
+    console.log("Payload gửi đi:", payload);
 
-      toast.success("Cập nhật khuyến mãi thành công!");
-      setTimeout(() => {
-        navigate("/admin/promotion-products/getAll");
-      }, 1000);
-    } catch (err) {
-      console.error("Lỗi khi gửi dữ liệu:", err);
-      console.error("Response payload:", err.response?.data);
-      let errorMessage = "Lỗi khi cập nhật khuyến mãi!";
-      if (err.response?.status === 400) {
-        errorMessage =
-          err.response.data.message ||
-          "Dữ liệu không hợp lệ! Vui lòng kiểm tra lại.";
-      } else if (err.response?.status === 404) {
-        errorMessage = "Không tìm thấy khuyến mãi để chỉnh sửa!";
-      } else if (err.response?.status === 409) {
-        errorMessage =
-          "Một hoặc nhiều biến thể đã được sử dụng trong khuyến mãi khác!";
-      } else if (err.response?.data?.message) {
-        errorMessage = err.response.data.message;
+    const response = await axios.put(`${Constants.DOMAIN_API}/admin/promotion/${id}`, payload);
+
+    setExistingVariantIds(selectedVariants);
+    setCustomFormState({ product_variant_id: selectedVariants });
+    setValue("product_variant_id", selectedVariants);
+
+    toast.success(response.data.message || "Cập nhật khuyến mãi thành công!");
+    setTimeout(() => {
+      navigate("/admin/promotion-products/getAll");
+    }, 1000);
+  } catch (err) {
+    console.error("Lỗi khi gửi dữ liệu:", err);
+    console.error("Response payload:", err.response?.data);
+    let errorMessage = "Lỗi khi cập nhật khuyến mãi!";
+    if (err.response?.status === 400) {
+      errorMessage =
+        err.response.data.message ||
+        "Dữ liệu không hợp lệ! Vui lòng kiểm tra lại.";
+      // SỬA: Hiển thị chi tiết lỗi từ backend
+      if (err.response.data.details) {
+        const { invalidVariantIds, invalidQuantities } = err.response.data.details;
+        if (invalidVariantIds?.length) {
+          errorMessage += ` ID biến thể không hợp lệ: ${invalidVariantIds
+            .map((item) => `index ${item.index}: ${item.value}`)
+            .join(", ")}.`;
+        }
+        if (invalidQuantities?.length) {
+          errorMessage += ` Số lượng không hợp lệ: ${invalidQuantities
+            .map((item) => `index ${item.index}: ${item.value}`)
+            .join(", ")}.`;
+        }
       }
-      toast.error(errorMessage);
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
+    } else if (err.response?.status === 404) {
+      errorMessage = "Không tìm thấy khuyến mãi để chỉnh sửa!";
+    } else if (err.response?.status === 409) {
+      errorMessage =
+        err.response.data.message ||
+        "Không thể cập nhật vì biến thể đã được sử dụng trong đơn hàng!";
+    } else if (err.response?.data?.message) {
+      errorMessage = err.response.data.message;
     }
-  };
+    toast.error(errorMessage);
+    setError(errorMessage);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <div className="card p-4">
