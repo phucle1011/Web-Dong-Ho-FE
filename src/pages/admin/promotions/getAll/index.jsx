@@ -22,6 +22,7 @@ import { useNavigate } from "react-router-dom";
 
 function PromotionGetAll() {
     const navigate = useNavigate();
+    const [usedPromotions, setUsedPromotions] = useState([]);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showOrderModal, setShowOrderModal] = useState(false);
     const [appliedOrders, setAppliedOrders] = useState([]);
@@ -172,7 +173,7 @@ function PromotionGetAll() {
         }
     };
 
-       const deletePromotion = async () => {
+    const deletePromotion = async () => {
         if (!selectedPromotion) return;
         try {
             await axios.delete(`${Constants.DOMAIN_API}/admin/promotion/${selectedPromotion.id}`);
@@ -203,17 +204,25 @@ function PromotionGetAll() {
     ];
 
     const getUsageCounts = async () => {
-  try {
-    const res = await axios.get(`${Constants.DOMAIN_API}/admin/promotions/usage-count`);
-    const usageMap = {};
-    res.data.data.forEach(item => {
-      usageMap[item.promotion_id] = parseInt(item.used_count);
-    });
-    setUsedCounts(usageMap);
-  } catch (err) {
-    console.error('Lỗi lấy usage count:', err);
-  }
-};
+        try {
+            const params = {};
+            if (startDate) params.from = new Date(startDate).toISOString().slice(0, 10);
+            if (endDate) params.to = new Date(endDate).toISOString().slice(0, 10);
+
+            const res = await axios.get(`${Constants.DOMAIN_API}/admin/promotions/usage-count`, { params });
+
+            const usageMap = {};
+            (res.data?.data || []).forEach(item => {
+                const total = Number(item.used_total_effective ?? 0);
+                usageMap[item.promotion_id] = total;
+            });
+            setUsedCounts(usageMap);
+        } catch (err) {
+            console.error('Lỗi lấy usage count:', err);
+        }
+    };
+
+    const showUsedCol = filterStatus === "used";
 
     return (
         <div className="container mx-auto p-4 bg-white shadow-md rounded">
@@ -331,7 +340,7 @@ function PromotionGetAll() {
                             <th className="border p-2">Tên</th>
                             <th className="border p-2">% Giảm</th>
                             <th className="border p-2">Lượt</th>
-                            <th className="border p-2">Đã sử dụng</th>
+                            {showUsedCol && <th className="border p-2">Đã sử dụng</th>}
                             <th className="border p-2">Bắt đầu</th>
                             <th className="border p-2">Kết thúc</th>
                             <th className="border p-2">Áp dụng</th>
@@ -354,7 +363,13 @@ function PromotionGetAll() {
                                         })}`}
                                 </td>
                                 <td className="border p-2 text-center">{promo.quantity > 0 ? promo.quantity : "Hết lượt"}</td>
-                                <td className="border p-2 text-center">{promo.used_count || 0}</td>
+                                {showUsedCol && (
+                                    <td className="border p-2 text-center">
+                                        {usedCounts[promo.id] ??
+                                            (Array.isArray(promo.orders) ? promo.orders.length : 0)}
+                                    </td>
+                                )}
+
                                 <td className="border p-2 text-center">{formatDate(promo.start_date)}</td>
                                 <td className="border p-2 text-center">{formatDate(promo.end_date)}</td>
                                 <td className="border p-2 text-center">
@@ -484,6 +499,60 @@ function PromotionGetAll() {
                     onClose={() => setShowOrderModal(false)}
                 />
             )} */}
+
+            {usedPromotions && usedPromotions.length > 0 && (
+                <div className="mt-10 border-t pt-6">
+                    <h3 className="text-lg font-semibold mb-2 text-[#073272]">Khuyến mãi đã áp dụng</h3>
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm border border-collapse border-gray-300">
+                            <thead className="bg-gray-100">
+                                <tr>
+                                    <th className="border p-2">#</th>
+                                    <th className="border p-2">Tên</th>
+                                    <th className="border p-2">% Giảm</th>
+                                    <th className="border p-2">Đã sử dụng</th>
+                                    <th className="border p-2">Bắt đầu</th>
+                                    <th className="border p-2">Kết thúc</th>
+                                    <th className="border p-2">Chi tiết</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {usedPromotions.map((promo, index) => (
+                                    <tr key={promo.id} className="hover:bg-gray-50">
+                                        <td className="border p-2 text-center">{index + 1}</td>
+                                        <td className="border p-2">{promo.name}</td>
+                                        <td className="border p-2 text-center">
+                                            {promo.discount_type === "percentage"
+                                                ? `${promo.discount_value}%`
+                                                : `${Number(promo.discount_value).toLocaleString("vi-VN", {
+                                                    style: "currency",
+                                                    currency: "VND",
+                                                })}`}
+                                        </td>
+                                        {showUsedCol && (
+                                            <td className="border p-2 text-center">
+                                                {usedCounts[promo.id] ??
+                                                    (Array.isArray(promo.orders) ? promo.orders.length : 0)}
+                                            </td>
+                                        )}
+
+                                        <td className="border p-2 text-center">{formatDate(promo.start_date)}</td>
+                                        <td className="border p-2 text-center">{formatDate(promo.end_date)}</td>
+                                        <td className="border p-2 text-center">
+                                            <button
+                                                onClick={() => navigate(`/admin/promotions/applied/${promo.id}`)}
+                                                className="bg-blue-500 text-white p-2 rounded w-8 h-8 inline-flex items-center justify-center"
+                                            >
+                                                <FaEye size={20} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
