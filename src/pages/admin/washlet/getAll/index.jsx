@@ -13,7 +13,7 @@ import {
   FaListUl,
   FaHourglassHalf,
   FaCheckCircle,
-  FaTimesCircle 
+  FaTimesCircle
 } from "react-icons/fa";
 import Constants from "../../../../Constants.jsx";
 import { toast } from "react-toastify";
@@ -130,6 +130,16 @@ function WashletGetAll() {
     setSearchTerm(e.target.value);
   };
 
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setStartDate(null);
+    setEndDate(null);
+    setStatusFilter("all");
+    setActiveStatus("");
+    setCurrentPage(1);
+    fetchWallets(1);
+  };
+
   return (
     <div className="container mx-auto p-2">
       <div className="bg-white p-4 shadow rounded-md">
@@ -140,6 +150,12 @@ function WashletGetAll() {
             <DatePicker selected={startDate} onChange={(date) => setStartDate(date)} dateFormat="yyyy-MM-dd" className="border px-3 py-2 rounded w-40" placeholderText="Ngày bắt đầu" />
             <DatePicker selected={endDate} onChange={(date) => setEndDate(date)} dateFormat="yyyy-MM-dd" className="border px-3 py-2 rounded w-40" placeholderText="Ngày kết thúc" />
             <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded" onClick={() => fetchWallets(1)}>Lọc theo ngày</button>
+            <button
+              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded"
+              onClick={handleClearFilters}
+            >
+              Bỏ lọc
+            </button>
           </div>
         </div>
 

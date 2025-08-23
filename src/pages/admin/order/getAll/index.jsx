@@ -15,7 +15,7 @@ import {
   FaCheckDouble,
   FaBoxOpen,
   FaTimesCircle,
-  FaListUl
+  FaListUl,
 } from "react-icons/fa";
 import Constants from "../../../../Constants.jsx";
 import { toast } from "react-toastify";
@@ -32,7 +32,7 @@ function OrderGetAll() {
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [activeStatus, setActiveStatus] = useState('');
+  const [activeStatus, setActiveStatus] = useState("");
   const [statusCounts, setStatusCounts] = useState({
     all: 0,
     pending: 0,
@@ -69,8 +69,8 @@ function OrderGetAll() {
 
   function formatDateLocal(date) {
     const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
     return `${year}-${month}-${day}`;
   }
 
@@ -138,7 +138,14 @@ function OrderGetAll() {
       case "cancelled":
         return ["cancelled"];
       default:
-        return ["pending", "confirmed", "shipping", "delivered", "completed", "cancelled"];
+        return [
+          "pending",
+          "confirmed",
+          "shipping",
+          "delivered",
+          "completed",
+          "cancelled",
+        ];
     }
   };
 
@@ -152,13 +159,10 @@ function OrderGetAll() {
         }
         reasonToSend = reason === "Khác" ? customReason : reason;
       }
-      await axios.put(
-        `${Constants.DOMAIN_API}/admin/orders/edit/${orderId}`,
-        {
-          status: newStatus,
-          cancellation_reason: reasonToSend,
-        }
-      );
+      await axios.put(`${Constants.DOMAIN_API}/admin/orders/edit/${orderId}`, {
+        status: newStatus,
+        cancellation_reason: reasonToSend,
+      });
       toast.success("Cập nhật trạng thái thành công");
       fetchOrders(currentPage);
     } catch (error) {
@@ -177,11 +181,21 @@ function OrderGetAll() {
   };
 
   const handleSearchSubmit = async () => {
-    if (searchTerm.trim() === '') {
+    if (searchTerm.trim() === "") {
       toast.warning("Vui lòng nhập tên khách hàng hoặc mã đơn hàng.");
       return;
     }
     setStatusFilter("all");
+    setCurrentPage(1);
+    fetchOrders(1);
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setStartDate(null);
+    setEndDate(null);
+    setStatusFilter("all");
+    setActiveStatus("");
     setCurrentPage(1);
     fetchOrders(1);
   };
@@ -312,30 +326,92 @@ function OrderGetAll() {
             >
               Xuất Excel
             </button>
+            <button
+              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded"
+              onClick={handleClearFilters}
+            >
+              Bỏ lọc
+            </button>
           </div>
         </div>
 
-
         <div className="flex flex-nowrap items-center gap-6 border-b border-gray-200 px-6 py-4 overflow-x-auto mb-4 whitespace-nowrap">
           {[
-            { key: "", label: "Tất cả", icon: <FaListUl />, color: "bg-gray-800", textColor: "text-white", count: statusCounts.all },
-            { key: "pending", label: "Chờ xác nhận", icon: <FaClock className="mr-1" />, color: "bg-amber-300", textColor: "text-amber-800", count: statusCounts.pending },
-            { key: "confirmed", label: "Đã xác nhận", icon: <FaCheckCircle className="mr-1" />, color: "bg-yellow-300", textColor: "text-yellow-900", count: statusCounts.confirmed },
-            { key: "shipping", label: "Đang giao", icon: <FaTruck className="mr-1" />, color: "bg-blue-300", textColor: "text-blue-900", count: statusCounts.shipping },
-            { key: "completed", label: "Hoàn thành", icon: <FaCheckDouble className="mr-1" />, color: "bg-emerald-300", textColor: "text-emerald-800", count: statusCounts.completed },
-            { key: "delivered", label: "Đã giao", icon: <FaBoxOpen className="mr-1" />, color: "bg-green-300", textColor: "text-green-800", count: statusCounts.delivered },
-            { key: "cancelled", label: "Đã hủy", icon: <FaTimesCircle className="mr-1" />, color: "bg-rose-300", textColor: "text-rose-800", count: statusCounts.cancelled },
+            {
+              key: "",
+              label: "Tất cả",
+              icon: <FaListUl />,
+              color: "bg-gray-800",
+              textColor: "text-white",
+              count: statusCounts.all,
+            },
+            {
+              key: "pending",
+              label: "Chờ xác nhận",
+              icon: <FaClock className="mr-1" />,
+              color: "bg-amber-300",
+              textColor: "text-amber-800",
+              count: statusCounts.pending,
+            },
+            {
+              key: "confirmed",
+              label: "Đã xác nhận",
+              icon: <FaCheckCircle className="mr-1" />,
+              color: "bg-yellow-300",
+              textColor: "text-yellow-900",
+              count: statusCounts.confirmed,
+            },
+            {
+              key: "shipping",
+              label: "Đang giao",
+              icon: <FaTruck className="mr-1" />,
+              color: "bg-blue-300",
+              textColor: "text-blue-900",
+              count: statusCounts.shipping,
+            },
+            {
+              key: "completed",
+              label: "Hoàn thành",
+              icon: <FaCheckDouble className="mr-1" />,
+              color: "bg-emerald-300",
+              textColor: "text-emerald-800",
+              count: statusCounts.completed,
+            },
+            {
+              key: "delivered",
+              label: "Đã giao",
+              icon: <FaBoxOpen className="mr-1" />,
+              color: "bg-green-300",
+              textColor: "text-green-800",
+              count: statusCounts.delivered,
+            },
+            {
+              key: "cancelled",
+              label: "Đã hủy",
+              icon: <FaTimesCircle className="mr-1" />,
+              color: "bg-rose-300",
+              textColor: "text-rose-800",
+              count: statusCounts.cancelled,
+            },
           ].map(({ key, label, color, textColor, count, icon }) => {
             const isActive = activeStatus === key;
             return (
               <button
                 key={key}
                 onClick={() => handleFilterClick(key)}
-                className={`border px-3 py-1.5 text-xs flex items-center gap-1 whitespace-nowrap ${isActive ? 'bg-[#073272] text-white' : 'bg-white text-gray-700'
-                  }`}
+                className={`border px-3 py-1.5 text-xs flex items-center gap-1 whitespace-nowrap ${
+                  isActive
+                    ? "bg-[#073272] text-white"
+                    : "bg-white text-gray-700"
+                }`}
               >
-                <span className="inline-flex items-center gap-1"> {icon && icon} {label}</span>
-                <span className={`${color} ${textColor} rounded-pill px-2 py-0.5 text-nowrap ms-2`}>
+                <span className="inline-flex items-center gap-1">
+                  {" "}
+                  {icon && icon} {label}
+                </span>
+                <span
+                  className={`${color} ${textColor} rounded-pill px-2 py-0.5 text-nowrap ms-2`}
+                >
                   {count}
                 </span>
               </button>
@@ -356,8 +432,18 @@ function OrderGetAll() {
             className="bg-blue-900 hover:bg-blue-800 text-white px-4 py-1.5 rounded"
             onClick={() => fetchOrders(1)}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1010.5 3a7.5 7.5 0 006.15 13.65z" />
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1010.5 3a7.5 7.5 0 006.15 13.65z"
+              />
             </svg>
           </button>
         </div>
@@ -367,12 +453,24 @@ function OrderGetAll() {
             <thead className="bg-gray-100">
               <tr>
                 <th className="text-center py-3 px-2 whitespace-nowrap">#</th>
-                <th className="text-center py-3 px-2 whitespace-nowrap">Mã đơn</th>
-                <th className="text-center py-3 px-2 whitespace-nowrap">Tên khách hàng</th>
-                <th className="text-center py-3 px-2 whitespace-nowrap">Ngày tạo</th>
-                <th className="text-center py-3 px-2 whitespace-nowrap">Tổng tiền</th>
-                <th className="text-center py-3 px-2 whitespace-nowrap">Trạng thái</th>
-                <th className="text-center py-3 px-2 whitespace-nowrap">Thanh toán</th>
+                <th className="text-center py-3 px-2 whitespace-nowrap">
+                  Mã đơn
+                </th>
+                <th className="text-center py-3 px-2 whitespace-nowrap">
+                  Tên khách hàng
+                </th>
+                <th className="text-center py-3 px-2 whitespace-nowrap">
+                  Ngày tạo
+                </th>
+                <th className="text-center py-3 px-2 whitespace-nowrap">
+                  Tổng tiền
+                </th>
+                <th className="text-center py-3 px-2 whitespace-nowrap">
+                  Trạng thái
+                </th>
+                <th className="text-center py-3 px-2 whitespace-nowrap">
+                  Thanh toán
+                </th>
                 <th className="text-center py-3 px-2 whitespace-nowrap"></th>
               </tr>
             </thead>
@@ -381,11 +479,17 @@ function OrderGetAll() {
                 orders.map((order, index) => (
                   <React.Fragment key={order.id}>
                     <tr>
-                      <td className="p-2 border border-gray-300 text-center">{index + 1}</td>
-                      <td className="p-2 border border-gray-300 text-center">{order.order_code}</td>
-                      <td className="p-2 border border-gray-300 text-center">{order.user?.name || "N/A"}</td>
                       <td className="p-2 border border-gray-300 text-center">
-                        {(order.created_at).replace("T", " ").substring(0, 19)}
+                        {index + 1}
+                      </td>
+                      <td className="p-2 border border-gray-300 text-center">
+                        {order.order_code}
+                      </td>
+                      <td className="p-2 border border-gray-300 text-center">
+                        {order.user?.name || "N/A"}
+                      </td>
+                      <td className="p-2 border border-gray-300 text-center">
+                        {order.created_at.replace("T", " ").substring(0, 19)}
                       </td>
                       <td className="p-2 border border-gray-300 text-center">
                         {Number(order.total_price).toLocaleString("vi-VN", {
@@ -419,7 +523,9 @@ function OrderGetAll() {
                           </select>
                         )}
                       </td>
-                      <td className="p-2 border border-gray-300 text-center">{order.payment_method}</td>
+                      <td className="p-2 border border-gray-300 text-center">
+                        {order.payment_method}
+                      </td>
                       <td className="p-2 border border-gray-300 flex gap-2 text-center">
                         <Link
                           to={`/admin/orders/detail/${order.id}`}
@@ -443,15 +549,21 @@ function OrderGetAll() {
                       <tr>
                         <td colSpan={8} className="p-4">
                           <div className="bg-yellow-100 p-4 rounded-lg w-full">
-                            <h2 className="text-lg font-semibold mb-2">Thông tin theo dõi đơn hàng</h2>
+                            <h2 className="text-lg font-semibold mb-2">
+                              Thông tin theo dõi đơn hàng
+                            </h2>
                             <p className="mb-1">
-                              <span className="font-semibold">Mã đơn hàng:</span>{" "}
+                              <span className="font-semibold">
+                                Mã đơn hàng:
+                              </span>{" "}
                               <span className="text-blue-600 font-medium">
                                 {order.order_code}
                               </span>
                             </p>
                             <p className="mb-4">
-                              <span className="font-semibold">Trạng thái hiện tại:</span>{" "}
+                              <span className="font-semibold">
+                                Trạng thái hiện tại:
+                              </span>{" "}
                               <span className="text-green-600 font-medium">
                                 {translateStatus(order.status)}
                               </span>
@@ -463,13 +575,20 @@ function OrderGetAll() {
                                     <div className="absolute -left-2 top-1 w-4 h-4 bg-blue-500 rounded-full border-2 border-white z-10"></div>
                                     <div className="bg-white rounded-md shadow-sm border border-gray-200 p-3">
                                       <p className="text-sm mb-1">
-                                        <span className="font-semibold">Thời gian:</span>{" "}
-                                        {new Date(value.time).toLocaleString("vi-VN", {
-                                          hour12: false,
-                                        })}
+                                        <span className="font-semibold">
+                                          Thời gian:
+                                        </span>{" "}
+                                        {new Date(value.time).toLocaleString(
+                                          "vi-VN",
+                                          {
+                                            hour12: false,
+                                          }
+                                        )}
                                       </p>
                                       <p className="text-sm mb-1">
-                                        <span className="font-semibold">Vị trí:</span>{" "}
+                                        <span className="font-semibold">
+                                          Vị trí:
+                                        </span>{" "}
                                         {value.location}
                                       </p>
                                       {/* <p className="text-sm mb-1">
@@ -478,7 +597,9 @@ function OrderGetAll() {
                                       </p> */}
                                       {value.note && (
                                         <p className="text-sm">
-                                          <span className="font-semibold">Ghi chú:</span>{" "}
+                                          <span className="font-semibold">
+                                            Ghi chú:
+                                          </span>{" "}
                                           {value.note}
                                         </p>
                                       )}
@@ -516,7 +637,6 @@ function OrderGetAll() {
 
         <div className="flex justify-center mt-6">
           <div className="flex items-center space-x-1">
-
             <button
               disabled={currentPage === 1}
               onClick={() => setCurrentPage(1)}
@@ -540,8 +660,11 @@ function OrderGetAll() {
                   <button
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    className={`px-3 py-1 border rounded ${page === currentPage ? "bg-blue-600 text-white" : "bg-white hover:bg-blue-100"
-                      }`}
+                    className={`px-3 py-1 border rounded ${
+                      page === currentPage
+                        ? "bg-blue-600 text-white"
+                        : "bg-white hover:bg-blue-100"
+                    }`}
                   >
                     {page}
                   </button>
@@ -570,7 +693,6 @@ function OrderGetAll() {
       {showReasonModal && (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
           <div className="bg-white p-6 rounded shadow-md w-[400px] relative">
-
             <button
               className="absolute top-2 right-2 text-gray-500 hover:text-red-600 text-xl font-bold mr-2"
               onClick={() => setShowReasonModal(false)}
@@ -628,7 +750,6 @@ function OrderGetAll() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

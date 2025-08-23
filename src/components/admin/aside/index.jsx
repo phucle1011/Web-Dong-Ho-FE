@@ -89,12 +89,6 @@ function Aside() {
                 <span className="hide-menu">Quản lý đơn hàng</span>
               </Link>
             </li>
-            <li className={`sidebar-item ${location.pathname === "/admin/washlets/getAll" ? "active" : ""}`}>
-              <Link className="sidebar-link" to="/admin/washlets/getAll">
-                <FaBox />
-                <span className="hide-menu">Quản lý ví tiền</span>
-              </Link>
-            </li>
 
             <li className="nav-small-cap">
               <span className="hide-menu">Quản lý đấu giá</span>
@@ -110,13 +104,19 @@ function Aside() {
             </li> */}
             <li className={`sidebar-item ${location.pathname === "/admin/auctions/getAll" ? "active" : ""}`}>
               <Link className="sidebar-link" to="/admin/auctions/getAll">
-                <FaListAlt  />
+                <FaListAlt />
                 <span className="hide-menu">Quản lý đấu giá</span>
               </Link>
             </li>
 
             <li className="nav-small-cap">
               <span className="hide-menu">Quản lý người dùng</span>
+            </li>
+            <li className={`sidebar-item ${location.pathname === "/admin/washlets/getAll" ? "active" : ""}`}>
+              <Link className="sidebar-link" to="/admin/washlets/getAll">
+                <FaBox />
+                <span className="hide-menu">Quản lý ví tiền</span>
+              </Link>
             </li>
             <li className={`sidebar-item ${location.pathname === "/admin/user/getAll" ? "active" : ""}`}>
               <Link className="sidebar-link" to="/admin/user/getAll">

@@ -142,6 +142,19 @@ function AuctionGetAll() {
         fetchAuctions(currentPage, searchTerm, startDate, endDate, statusFilter);
     }, [currentPage]);
 
+    const handleClearFilters = () => {
+
+        setSearchTerm("");
+        setStartDate(null);
+        setEndDate(null);
+        setStatusFilter("all");
+        setActiveStatus("all");
+
+        setCurrentPage(1);
+
+        fetchAuctions(1, "", null, null, "all");
+    };
+
     return (
         <div className="container mx-auto p-2">
             <div className="bg-white p-4 shadow rounded-md">
@@ -177,6 +190,12 @@ function AuctionGetAll() {
                             onClick={handleFilter}
                         >
                             Lọc theo ngày
+                        </button>
+                        <button
+                            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded"
+                            onClick={handleClearFilters}
+                        >
+                            Bỏ lọc
                         </button>
                     </div>
 

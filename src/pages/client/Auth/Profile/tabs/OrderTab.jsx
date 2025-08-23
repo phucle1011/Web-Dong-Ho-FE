@@ -478,6 +478,23 @@ export default function OrderTab() {
     }
   };
 
+  const handleClearFilters = () => {
+
+    setSearchTerm("");
+    setStartDate(null);
+    setEndDate(null);
+    setStatusFilter("all");
+    setActiveStatus("");
+    setCurrentPage(1);
+
+    fetchOrders(1, {
+      searchTerm: "",
+      startDate: null,
+      endDate: null,
+      statusFilter: "all",
+    });
+  };
+
   return (
     <div className="w-full p-2">
       <div className="bg-white p-4 shadow rounded-md">
@@ -507,6 +524,12 @@ export default function OrderTab() {
               onClick={() => fetchOrders(1)}
             >
               Lọc theo ngày
+            </button>
+            <button
+              className="bg-gray-600 hover:bg-gray-700 text-white text-sm px-3 py-1.5 rounded mr-2"
+              onClick={handleClearFilters}
+            >
+              Bỏ lọc
             </button>
           </div>
         </div>
@@ -568,7 +591,7 @@ export default function OrderTab() {
                         <td className="text-center py-4">{order.order_code}</td>
                         <td className="text-center py-4">{order.user?.name || "N/A"}</td>
                         <td className="text-center py-4 px-2 whitespace-nowrap">
-                          {new Date(order.created_at).toLocaleDateString("vi-VN")}
+                          {order.created_at.replace("T", " ").substring(0, 19)}
                         </td>
                         <td className="text-center py-4 px-2">
                           {order.status === "delivered" ? (
