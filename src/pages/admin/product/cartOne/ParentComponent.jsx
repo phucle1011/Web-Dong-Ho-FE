@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import CartVarian from "./cartVarian";
 
-export default function ParentComponent({ allAttributes, onVariantsChange }) {
+export default function ParentComponent({
+  allAttributes, onVariantsChange,  onVariantUploadStart = () => {}, onVariantUploadDone = () => {},}) {
   const [variantForms, setVariantForms] = useState([]);
 
   useEffect(() => {
@@ -94,6 +95,8 @@ export default function ParentComponent({ allAttributes, onVariantsChange }) {
         addAttributeRow={() => addAttributeRow(index)}
         images={form.images}
         setImages={(imgs) => handleSetImages(index, imgs)}
+         onUploadStart={onVariantUploadStart}
+        onUploadDone={onVariantUploadDone}
       />
     </div>
   ))}

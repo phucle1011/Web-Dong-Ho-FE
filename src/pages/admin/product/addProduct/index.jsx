@@ -51,6 +51,8 @@ const AddProduct = () => {
   const [attributes, setAttributes] = useState([]);
 // gần các useState khác
 const [isUploadingThumb, setIsUploadingThumb] = useState(false);
+// gần các useState khác:
+const [activeVariantUploads, setActiveVariantUploads] = useState(0); // số upload biến thể đang chạy
 
   const handleBrandAdded = () => {
     setShowBrandModal(false);
@@ -131,27 +133,57 @@ const [isUploadingThumb, setIsUploadingThumb] = useState(false);
     setMessage("");
 
     try {
-      // Bước 1: Kiểm tra dữ liệu biến thể trước khi gửi
-      for (let i = 0; i < variants.length; i++) {
-        const variant = variants[i];
-        if (
-          !variant.sku?.trim() ||
-          !variant.stock?.toString().trim() ||
-          !variant.price?.toString().trim() ||
-          !variant.attributes?.length
-        ) {
-          toast.error(` Biến thể ${i + 1} đang thiếu thông tin bắt buộc.`);
+       // ❌ Chặn nếu thumbnail đang upload
+    if (isUploadingThumb) {
+      toast.error("Vui lòng đợi upload ảnh đại diện xong.");
+      setLoading(false);
+      return;
+    }
+
+    // ❌ Chặn nếu biến thể đang upload
+    if (activeVariantUploads > 0) {
+      toast.error("Vui lòng đợi upload ảnh biến thể hoàn tất.");
+      setLoading(false);
+      return;
+    }
+
+    // ❌ Chặn nếu có ảnh biến thể chưa có url/public_id
+    for (let i = 0; i < variants.length; i++) {
+      const v = variants[i];
+      if (Array.isArray(v.images) && v.images.length > 0) {
+        const invalid = v.images.some(img => !img?.url || !img?.public_id);
+        if (invalid) {
+          toast.error(`Ảnh của biến thể #${i + 1} chưa upload xong.`);
           setLoading(false);
           return;
         }
       }
+    }
 
-      // Bước 2: Gửi request tạo sản phẩm chính
-      const productData = {
-        ...formData,
-        thumbnail: thumbnailUrl,
-        description: description,
-      };
+    // ✅ Kiểm tra dữ liệu biến thể như cũ...
+    for (let i = 0; i < variants.length; i++) {
+      const variant = variants[i];
+      if (
+        !variant.sku?.trim() ||
+        !variant.stock?.toString().trim() ||
+        !variant.price?.toString().trim() ||
+        !variant.attributes?.length
+      ) {
+        toast.error(` Biến thể ${i + 1} đang thiếu thông tin bắt buộc.`);
+        setLoading(false);
+        return;
+      }
+    }
+
+    // ✅ Lưu ý: thumbnailUrl là object {url, public_id}
+    const productData = {
+      ...formData,
+      thumbnail: thumbnailUrl?.url || "",   // <-- chỉnh chỗ này
+      description: description,
+    };
+      
+
+      
 
       const productRes = await axios.post(
         `${Constants.DOMAIN_API}/admin/products`,
@@ -313,6 +345,7 @@ const handleCancel = async () => {
             </div>
 
             <Select
+            
               options={brandOptions}
               className="basic-single-select"
               classNamePrefix="select"
@@ -355,29 +388,27 @@ const handleCancel = async () => {
             </div>
 
             <Select
-              isMulti
-              options={categoryOptions}
-              className="basic-multi-select"
-              classNamePrefix="select"
-              onChange={(selectedOptions) => {
-                const values = selectedOptions
-                  ? selectedOptions.map((opt) => opt.value)
-                  : [];
-                setValue("category_id", values);
-                trigger("category_id");
-              }}
-              placeholder="Chọn danh mục..."
-              isClearable
-              menuPortalTarget={document.body}
-              styles={{ menuPortal: (base) => ({ ...base, zIndex: 9999 }) }}
-            />
+  options={categoryOptions}
+  className="basic-single-select"
+  classNamePrefix="select"
+  onChange={(selectedOption) => {
+    const value = selectedOption ? selectedOption.value : null;
+    setValue("category_id", value);
+    trigger("category_id");
+  }}
+  placeholder="Chọn danh mục..."
+  isClearable
+  menuPortalTarget={document.body}
+  styles={{ menuPortal: (base) => ({ ...base, zIndex: 9999 }) }}
+/>
 
-            <input
-              type="hidden"
-              {...register("category_id", {
-                required: "Vui lòng chọn ít nhất 1 danh mục",
-              })}
-            />
+<input
+  type="hidden"
+  {...register("category_id", {
+    required: "Vui lòng chọn 1 danh mục",
+  })}
+/>
+
             {errors.category_id && (
               <small className="text-danger">
                 {errors.category_id.message}
@@ -480,13 +511,22 @@ const handleCancel = async () => {
 
 <button
   type="submit"
-  disabled={loading || isUploadingThumb}
+  disabled={loading || isUploadingThumb || activeVariantUploads > 0}
   className={`bg-[#073272] text-white px-6 py-2 rounded transition ${
-    loading || isUploadingThumb ? "opacity-50 cursor-not-allowed" : "hover:bg-[#052354]"
+    loading || isUploadingThumb || activeVariantUploads > 0
+      ? "opacity-50 cursor-not-allowed"
+      : "hover:bg-[#052354]"
   }`}
 >
-  {loading ? "Đang thêm..." : isUploadingThumb ? "Đang tải ảnh..." : "Thêm sản phẩm"}
+  {loading
+    ? "Đang thêm..."
+    : isUploadingThumb
+    ? "Đang tải ảnh đại diện..."
+    : activeVariantUploads > 0
+    ? "Đang tải ảnh biến thể..."
+    : "Thêm sản phẩm"}
 </button>
+
 
             </div>
           </div>
@@ -574,9 +614,12 @@ const handleCancel = async () => {
         </div>
         <div className="col-span-1 border p-3 rounded">
           <ParentComponent
-            allAttributes={attributes}
-            onVariantsChange={setVariants}
-          />
+  allAttributes={attributes}
+  onVariantsChange={setVariants}
+  onVariantUploadStart={() => setActiveVariantUploads(n => n + 1)}
+  onVariantUploadDone={() => setActiveVariantUploads(n => Math.max(0, n - 1))}
+/>
+
         </div>
       </form>
       {showBrandModal && (

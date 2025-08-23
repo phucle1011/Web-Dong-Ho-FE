@@ -19,6 +19,8 @@ const CartVarian = ({
   addAttributeRow,
   images,
   setImages,
+   onUploadStart = () => {},
+ onUploadDone = () => {},
 }) => {
   // Tạo options cho react-select từ allAttributes
   const attrOptions = (excludeIds = []) =>
@@ -33,12 +35,25 @@ const CartVarian = ({
     return found ? { value: String(found.id), label: found.name } : null;
   };
 
-  const handleImageChange = async (e) => {
-    const files = Array.from(e.target.files);
-    const uploadPromises = files.map(uploadToCloudinary);
-    const uploadedUrls = await Promise.all(uploadPromises);
-    setImages(uploadedUrls);
-  };
+ const handleImageChange = async (e) => {
+   const files = Array.from(e.target.files || []);
+   if (!files.length) return;
+
+  const newImages = [];
+   for (const file of files) {
+     onUploadStart(); // báo form cha: +1 upload
+    try {
+       const res = await uploadToCloudinary(file); // kỳ vọng { url, public_id }
+       if (res?.url) newImages.push({ url: res.url, public_id: res.public_id });
+     } catch (err) {
+       console.error("Upload ảnh thất bại:", err);
+     } finally {
+       onUploadDone(); // báo form cha: -1 upload
+     }
+   }
+   // nối thêm vào mảng hiện tại, KHÔNG ghi đè
+   setImages([...(images || []), ...newImages]);
+ };
 
   const handleImageDelete = async (public_id) => {
     try {
