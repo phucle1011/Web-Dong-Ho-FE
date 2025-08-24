@@ -98,7 +98,7 @@ export default function Wishlist({ wishlist = true }) {
       await fetchWishlist();
     } catch (error) {
       const errorMessage = error.response?.data?.message || "Lỗi khi thêm sản phẩm vào giỏ hàng.";
-      toast.error(errorMessage);
+      // toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
     }
@@ -155,7 +155,7 @@ export default function Wishlist({ wishlist = true }) {
 
       await fetchWishlist(); // refresh
     } catch (error) {
-      toast.error(error?.response?.data?.message || "Lỗi khi thêm sản phẩm vào giỏ hàng.");
+      // toast.error(error?.response?.data?.message || "Lỗi khi thêm sản phẩm vào giỏ hàng.");
     } finally {
       setIsProcessing(false);
     }
@@ -206,7 +206,7 @@ export default function Wishlist({ wishlist = true }) {
     } catch (error) {
       const errorMessage =
         error.response?.data?.message || "Lỗi khi xóa danh sách yêu thích.";
-      toast.error(errorMessage);
+      // toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
     }

@@ -95,15 +95,15 @@ export default function Login() {
         switch (result.message) {
           case "Email không tồn tại!":
             setErrors({ email: "Email không tồn tại!" });
-            toast.error("Email không tồn tại!");
+            // toast.error("Email không tồn tại!");
             break;
           case "Tài khoản bị khóa!":
             setErrors({ email: "Tài khoản bị khóa!" });
-            toast.error("Tài khoản bị khóa. Vui lòng liên hệ hỗ trợ.");
+            // toast.error("Tài khoản bị khóa. Vui lòng liên hệ hỗ trợ.");
             break;
           case "Mật khẩu không chính xác!":
             setErrors({ password: "Mật khẩu không đúng!" });
-            toast.error("Mật khẩu không chính xác!");
+            // toast.error("Mật khẩu không chính xác!");
             break;
           default:
             toast.error(result.message || "Đăng nhập thất bại!");
@@ -126,7 +126,7 @@ export default function Login() {
       toast.success("Đăng nhập thành công!");
       navigate("/");
     } catch (error) {
-      console.error("Lỗi khi đăng nhập:", error);
+      // console.error("Lỗi khi đăng nhập:", error);
       toast.error("Có lỗi xảy ra. Vui lòng thử lại sau!");
     } finally {
       setLoading(false);
