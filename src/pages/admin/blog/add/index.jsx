@@ -30,7 +30,7 @@ function AddBlog() {
   const [blogCategoryId, setBlogCategoryId] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const [imagePreview, setImagePreview] = useState("");
-  
+
   const navigate = useNavigate();
   const editorRef = useRef(null);
 
@@ -196,11 +196,6 @@ function AddBlog() {
                         ...prev,
                         title: "Tiêu đề không được quá 200 từ."
                       }));
-                    } else if (newTitle.length > 255) {
-                      setFormErrors(prev => ({
-                        ...prev,
-                        title: "Tiêu đề không được vượt quá 255 ký tự."
-                      }));
                     } else {
                       setFormErrors(prev => ({ ...prev, title: "" }));
                     }
@@ -266,7 +261,7 @@ function AddBlog() {
                             const page = i + 1;
                             return (
                               <button
-                              type="button"
+                                type="button"
                                 key={page}
                                 onClick={() => fetchCategories(page)}
                                 className={`btn btn-sm ${categoryPage === page ? "btn-primary text-white" : "btn-light"}`}
@@ -311,24 +306,44 @@ function AddBlog() {
                   </div>
                 </div>
 
+<label className="form-label fw-bold">Mô tả ngắn</label>
+<Editor
+  apiKey="242t4tlz75qp0zzr2tgk6oz501hd80om15fr7rykscdflilg"
+  value={metaDescription}
+  onEditorChange={(newValue) => {
+    // Loại bỏ thẻ HTML để chỉ lấy text
+    const plainText = newValue.replace(/<[^>]+>/g, "").trim();
+    const words = plainText.split(/\s+/).filter(Boolean);
+    const wordCount = words.length;
 
-                <label className="form-label fw-bold">Mô tả ngắn</label>
-                <Editor
-                  apiKey="242t4tlz75qp0zzr2tgk6oz501hd80om15fr7rykscdflilg"
-                  value={metaDescription}
-                  onEditorChange={(newValue) => setMetaDescription(newValue)}
-                  init={{
-                    height: 200,
-                    menubar: false,
-                    plugins: ["lists", "link", "autolink", "charmap", "preview"],
-                    toolbar:
-                      "undo redo | bold italic underline | alignleft aligncenter alignright | bullist numlist",
-                    placeholder: "Nhập mô tả ngắn cho bài viết",
-                  }}
-                />
-                {formErrors.metaDescription && (
-                  <div className="text-danger mt-1">{formErrors.metaDescription}</div>
-                )}
+    setMetaDescription(newValue); // luôn set giá trị
+
+    if (wordCount > 500) {
+      setFormErrors((prev) => ({
+        ...prev,
+        metaDescription: `Mô tả ngắn không được vượt quá 500 từ (hiện tại ${wordCount} từ).`,
+      }));
+    } else {
+      setFormErrors((prev) => ({
+        ...prev,
+        metaDescription: "",
+      }));
+    }
+  }}
+  init={{
+    height: 200,
+    menubar: false,
+    plugins: ["lists", "link", "autolink", "charmap", "preview"],
+    toolbar:
+      "undo redo | bold italic underline | alignleft aligncenter alignright | bullist numlist",
+    placeholder: "Nhập mô tả ngắn cho bài viết",
+  }}
+/>
+
+{/* Thông báo lỗi hiển thị như form error */}
+{formErrors.metaDescription && (
+  <div className="text-danger mt-1">{formErrors.metaDescription}</div>
+)}
 
 
 
@@ -421,13 +436,13 @@ function AddBlog() {
                 )}
 
                 <div className="d-flex justify-content-start gap-2 mt-3">
-<button
-  type="submit"
-  disabled={uploading}
-  className="bg-[#073272] text-white px-6 py-2 rounded hover:bg-[#052354] transition"
->
-  {uploading ? "Đang thêm..." : "Thêm bài viết"}
-</button>
+                  <button
+                    type="submit"
+                    disabled={uploading}
+                    className="bg-[#073272] text-white px-6 py-2 rounded hover:bg-[#052354] transition"
+                  >
+                    {uploading ? "Đang thêm..." : "Thêm bài viết"}
+                  </button>
 
                   <button
                     type="button"
