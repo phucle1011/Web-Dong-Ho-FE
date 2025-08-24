@@ -12,7 +12,7 @@ export default function HeaderOne({ className, drawerAction, type = 1 }) {
         type={type}
         className="quomodo-shop-middle-bar lg:block hidden"
       />
-      {/* <div className="quomodo-shop-drawer lg:hidden block w-full h-[60px] bg-white">
+      <div className="quomodo-shop-drawer lg:hidden block w-full h-[60px] bg-white">
         <div className="w-full h-full flex justify-between items-center px-5">
           <div onClick={drawerAction}>
             <svg
@@ -36,7 +36,7 @@ export default function HeaderOne({ className, drawerAction, type = 1 }) {
                 <img
                   width="152"
                   height="36"
-                  src={`${process.env.REACT_APP_PUBLIC_URL}/assets/images/logo-3.svg`}
+                  src={`https://res.cloudinary.com/disgf4yl7/image/upload/v1755192506/l5p21sv5fnoobblwdwia.png`}
                   alt="logo"
                 />
               </Link>
@@ -45,7 +45,7 @@ export default function HeaderOne({ className, drawerAction, type = 1 }) {
                 <img
                   width="152"
                   height="36"
-                  src={`${process.env.REACT_APP_PUBLIC_URL}/assets/images/logo-4.svg`}
+                  src={`https://res.cloudinary.com/disgf4yl7/image/upload/v1755192506/l5p21sv5fnoobblwdwia.png`}
                   alt="logo"
                 />
               </Link>
@@ -54,7 +54,7 @@ export default function HeaderOne({ className, drawerAction, type = 1 }) {
                 <img
                   width="152"
                   height="36"
-                  src={`${process.env.REACT_APP_PUBLIC_URL}/assets/images/logo.svg`}
+                  src={`https://res.cloudinary.com/disgf4yl7/image/upload/v1755192506/l5p21sv5fnoobblwdwia.png`}
                   alt="logo"
                 />
               </Link>
@@ -66,16 +66,16 @@ export default function HeaderOne({ className, drawerAction, type = 1 }) {
                 <ThinBag />
               </span>
             </Link>
-            <span
+            {/* <span
               className={`w-[18px] h-[18px] rounded-full  absolute -top-2.5 -right-2.5 flex justify-center items-center text-[9px] ${
                 type === 3 ? "bg-qh3-blue text-white" : "bg-qyellow text-qblack"
               }`}
             >
-              15
-            </span>
+      
+            </span> */}
           </div>
         </div>
-      </div> */}
+      </div>
       <Navbar type={type} className="quomodo-shop-nav-bar lg:block hidden" />
     </header>
   );
