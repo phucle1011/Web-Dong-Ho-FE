@@ -3,7 +3,7 @@ import Compair from "../../Helpers/icons/Compair";
 import ThinLove from "../../Helpers/icons/ThinLove";
 import { Link } from "react-router-dom";
 import Arrow from "../../Helpers/icons/Arrow";
-
+import { FaRegUser } from "react-icons/fa";
 export default function DrawerThree({ className, open, action, type }) {
   const [tab, setTab] = useState("category");
   const [isSubMenuOpen, setIsSubMenuOpen] = useState(false);
@@ -36,6 +36,9 @@ export default function DrawerThree({ className, open, action, type }) {
               <Link to="/wishlist">
                 <ThinLove />
               </Link>
+              <Link to="/profile">
+<FaRegUser/>              
+</Link>
             </div>
             <button onClick={action} type="button">
 <span className="text-xl text-red-500 cursor-pointer">&times;</span>
