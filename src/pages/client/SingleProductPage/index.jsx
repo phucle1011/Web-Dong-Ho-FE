@@ -41,7 +41,7 @@ const { slug } = useParams();
   // --- Fetch dữ liệu sản phẩm + sản phẩm tương tự ---
   useEffect(() => {
     if (!slug) {
-      toast.error("Thiếu thông tin sản phẩm!");
+      // toast.error("Thiếu thông tin sản phẩm!");
       navigate("/all-products");
       return;
     }
