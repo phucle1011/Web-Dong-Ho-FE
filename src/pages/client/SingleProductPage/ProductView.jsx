@@ -138,7 +138,7 @@ const { slug } = useParams();
     } catch (error) {
       setIsInWishlist(false);
       console.error("Lỗi khi kiểm tra trạng thái wishlist:", error);
-      toast.error("Không thể kiểm tra trạng thái danh sách yêu thích.");
+      // toast.error("Không thể kiểm tra trạng thái danh sách yêu thích.");
     }
   };
 
@@ -205,7 +205,7 @@ const { slug } = useParams();
     const userId = decoded?.id;
 
     if (!token || !userId) {
-      toast.error("Bạn cần đăng nhập để xóa sản phẩm khỏi danh sách yêu thích.");
+      // toast.error("Bạn cần đăng nhập để xóa sản phẩm khỏi danh sách yêu thích.");
       return;
     }
 

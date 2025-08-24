@@ -29,7 +29,7 @@ export default function Dashboard() {
         const token = localStorage.getItem("token");
 
         if (!token) {
-          console.warn("Không tìm thấy token");
+          // console.warn("Không tìm thấy token");
           return;
         }
 
@@ -37,7 +37,7 @@ export default function Dashboard() {
 
         const userId = decoded?.id;
         if (!userId) {
-          console.warn("Không lấy được userId từ token");
+          // console.warn("Không lấy được userId từ token");
           return;
         }
 
