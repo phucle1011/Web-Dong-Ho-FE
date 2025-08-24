@@ -1,4 +1,3 @@
-// FE\src\pages\client\Helpers\SearchBox\index.jsx
 import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import Constants from "../../../../Constants";
@@ -16,7 +15,11 @@ export default function SearchBox({ className, onSearch }) {
   const [origins, setOrigins] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [waters, setWaters] = useState([]);
-  const [colors, setColors] = useState([]);
+
+  // Danh sách màu & phân trang cục bộ
+  const [colorsAll, setColorsAll] = useState([]);        // tất cả màu hợp lệ dạng "#rrggbb"
+  const [colorPage, setColorPage] = useState(1);
+  const COLOR_PAGE_SIZE = 30;
 
   const [loadingAttrs, setLoadingAttrs] = useState(true);
   const [attrError, setAttrError] = useState(null);
@@ -29,6 +32,16 @@ export default function SearchBox({ className, onSearch }) {
   const [selectedAttributes, setSelectedAttributes] = useState([]);  // [{value,label}]
   const [valuesByAttr, setValuesByAttr] = useState({});              // { [attrId]: [{value,label}] }
   const [selectedValuesByAttr, setSelectedValuesByAttr] = useState({}); // { [attrId]: string[] }
+
+  // ==== Phân trang màu: tính toán trang hiện tại ====
+  const totalColorPages = Math.max(
+    1,
+    Math.ceil((colorsAll?.length || 0) / COLOR_PAGE_SIZE)
+  );
+  const colorsPaged = useMemo(() => {
+    const start = (colorPage - 1) * COLOR_PAGE_SIZE;
+    return (colorsAll || []).slice(start, start + COLOR_PAGE_SIZE);
+  }, [colorsAll, colorPage]);
 
   // Fetch dữ liệu ban đầu
   useEffect(() => {
@@ -46,7 +59,7 @@ export default function SearchBox({ className, onSearch }) {
           axios.get(`${Constants.DOMAIN_API}/attribute-values`, { params: { attribute_id: 26, page: 1, limit: 100 } }),
           axios.get(`${Constants.DOMAIN_API}/attribute-values`, { params: { attribute_id: 32, page: 1, limit: 100 } }),
           axios.get(`${Constants.DOMAIN_API}/attribute-values`, { params: { attribute_id: 33, page: 1, limit: 100 } }),
-          axios.get(`${Constants.DOMAIN_API}/attribute-values`, { params: { attribute_id: 35, page: 1, limit: 100 } }),
+          axios.get(`${Constants.DOMAIN_API}/attribute-values`, { params: { attribute_id: 35, page: 1, limit: 200 } }),
           axios.get(`${Constants.DOMAIN_API}/product-attributes`),
         ]);
 
@@ -54,11 +67,12 @@ export default function SearchBox({ className, onSearch }) {
         setOrigins(originRes.data.data.map(v => v.value.toLowerCase()));
         setMaterials(materialRes.data.data.map(v => v.value.toLowerCase()));
         setWaters(waterRes.data.data.map(v => v.value.toLowerCase()));
-        setColors(
-          colorRes.data.data
-            .filter(v => /^#([0-9A-Fa-f]{6})$/.test(v.value))
-            .map(v => v.value.toLowerCase())
-        );
+
+        const colorList = (colorRes.data.data || [])
+          .map(v => String(v.value).toLowerCase())
+          .filter(v => /^#([0-9a-f]{6})$/.test(v));
+        setColorsAll(Array.from(new Set(colorList))); // unique
+        setColorPage(1); // về trang đầu khi load xong
 
         const attrs = (attributesRes.data?.data || []).map(a => ({ value: a.id, label: a.name }));
         setAllAttributes(attrs);
@@ -177,7 +191,7 @@ export default function SearchBox({ className, onSearch }) {
     if (sizes.includes(t)) {
       params.attributeIds = [31];
       params.attributeValues = [t];
-    } else if (colors.includes(t)) {
+    } else if (colorsAll.includes(t)) {
       params.attributeIds = [35];
       params.attributeValues = [t];
     } else if (origins.includes(t)) {
@@ -196,19 +210,27 @@ export default function SearchBox({ className, onSearch }) {
     setIsPanelOpen(false);
   };
 
-  // Nhỏ gọn react-select
+  // Nhỏ gọn react-select + giảm font-size
   const smallSelectStyles = {
     control: (base) => ({
       ...base,
-      minHeight: 32,
-      height: 32,
+      minHeight: 28,
+      height: 28,
       borderColor: "#e5e7eb",
       boxShadow: "none",
     }),
     valueContainer: (base) => ({ ...base, padding: "0 6px" }),
-    input: (base) => ({ ...base, margin: 0, padding: 0 }),
-    indicatorsContainer: (base) => ({ ...base, height: 32 }),
-    multiValue: (base) => ({ ...base, padding: "0 2px" }),
+    input: (base) => ({
+      ...base,
+      margin: 0,
+      padding: 0,
+      fontSize: 12,
+    }),
+    indicatorsContainer: (base) => ({ ...base, height: 28 }),
+    placeholder: (base) => ({ ...base, fontSize: 12 }),
+    singleValue: (base) => ({ ...base, fontSize: 12 }),
+    multiValueLabel: (base) => ({ ...base, fontSize: 12 }),
+    option: (base) => ({ ...base, fontSize: 12, padding: "6px 8px" }),
     menu: (base) => ({ ...base, zIndex: 60 }),
   };
 
@@ -228,7 +250,7 @@ export default function SearchBox({ className, onSearch }) {
             <div className="absolute left-0 mt-1 p-3 bg-white border rounded shadow z-50 w-[360px] max-w-[92vw]">
               {/* Thuộc tính */}
               <div className="mb-3">
-                <div className="text-xs font-small mb-1">Thuộc tính</div>
+                <div className="text-[11px] font-medium mb-1">Thuộc tính</div>
                 <Select
                   classNamePrefix="attr-select"
                   placeholder="Chọn tên thuộc tính…"
@@ -239,6 +261,7 @@ export default function SearchBox({ className, onSearch }) {
                   isDisabled={loadingAttrs}
                   styles={smallSelectStyles}
                 />
+
                 {selectedAttributes.length > 0 && (
                   <div className="flex flex-col gap-2 mt-2">
                     {selectedAttributes.map((attr) => {
@@ -247,7 +270,7 @@ export default function SearchBox({ className, onSearch }) {
                       const selectedVals = (selectedValuesByAttr[attrId] || []).map(v => ({ value: v, label: v }));
                       return (
                         <div key={attrId} className="flex items-center gap-2">
-                          <span className="text-xs min-w-24 truncate">{attr.label}:</span>
+                          <span className="text-[11px] min-w-24 truncate">{attr.label}:</span>
                           <div className="flex-1">
                             <Select
                               classNamePrefix="attr-values"
@@ -267,14 +290,14 @@ export default function SearchBox({ className, onSearch }) {
                       <button
                         type="button"
                         onClick={clearAttributeFilters}
-                        className="px-2.5 py-1 text-xs border rounded"
+                        className="px-2.5 py-1 text-[11px] border rounded"
                       >
                         Xóa thuộc tính
                       </button>
                       <button
                         type="button"
                         onClick={handleSubmit}
-                        className="px-3 py-1.5 text-xs bg-qh3-blue hover:bg-blue-700 text-white rounded"
+                        className="px-3 py-1.5 text-[11px] bg-qh3-blue hover:bg-blue-700 text-white rounded"
                       >
                         Áp dụng
                       </button>
@@ -285,16 +308,57 @@ export default function SearchBox({ className, onSearch }) {
 
               {/* Màu sắc */}
               <div>
-                <div className="text-xs font-medium mb-1">Màu sắc</div>
-                {colors.length > 0 ? (
-                  <BlockPicker colors={colors} triangle="hide" onChangeComplete={pickColor} />
-                ) : (
-                  <p className="text-xs text-red-600">{attrError || "Đang tải màu..."}</p>
+                <div className="text-[11px] font-medium mb-1">Màu sắc</div>
+
+                {/* Ô preview màu: chữ căn GIỮA ô vuông */}
+                {showCircle && (
+                  <div
+                    className="w-full h-20 rounded-md mb-2 flex items-center justify-center text-white text-sm font-medium"
+                    style={{ backgroundColor: keyword }}
+                  >
+                    {keyword}
+                  </div>
                 )}
+
+                {(colorsPaged?.length || 0) > 0 ? (
+                  <>
+                    <BlockPicker
+                      colors={colorsPaged}
+                      triangle="hide"
+                      onChangeComplete={pickColor}
+                    />
+
+                    {/* Điều khiển phân trang */}
+                    <div className="flex items-center justify-between mt-2">
+                      <button
+                        type="button"
+                        className="px-2 py-1 text-[11px] border rounded disabled:opacity-50"
+                        onClick={() => setColorPage(p => Math.max(1, p - 1))}
+                        disabled={colorPage <= 1}
+                      >
+                        ‹ Trước
+                      </button>
+                      <span className="text-[11px]">
+                        Trang {colorPage}/{totalColorPages}
+                      </span>
+                      <button
+                        type="button"
+                        className="px-2 py-1 text-[11px] border rounded disabled:opacity-50"
+                        onClick={() => setColorPage(p => Math.min(totalColorPages, p + 1))}
+                        disabled={colorPage >= totalColorPages}
+                      >
+                        Sau ›
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-[11px] text-red-600">{attrError || "Đang tải màu..."}</p>
+                )}
+
                 {showCircle && (
                   <button
                     type="button"
-                    className="mt-2 text-xs underline"
+                    className="mt-2 text-[11px] underline"
                     onClick={() => setKeyword("")}
                   >
                     Xóa màu
@@ -315,7 +379,7 @@ export default function SearchBox({ className, onSearch }) {
       <form onSubmit={handleSubmit} className="flex-1 relative">
         {showCircle && (
           <div
-            className="absolute left-2 top-1/2 transform -translate-y-1/2 w-5 h-5 rounded-full border"
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full border"
             style={{ backgroundColor: keyword }}
           />
         )}
