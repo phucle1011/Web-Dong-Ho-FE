@@ -13,6 +13,7 @@ import {
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { decodeToken } from "../../../client/Helpers/jwtDecode";
+import React from "react";
 
 function CommentPage() {
   const [allProducts, setAllProducts] = useState([]);
@@ -25,6 +26,22 @@ function CommentPage() {
   const [unrepliedComments, setUnrepliedComments] = useState([]);
   const [expandedCommentId, setExpandedCommentId] = useState(null);
   const [replyText, setReplyText] = useState("");
+  const [submittingId, setSubmittingId] = useState(null);
+
+  // phân trang cho reply
+  const [replyPage, setReplyPage] = useState(1);
+  const [replyLimit] = useState(5);
+  const [replyTotalPages, setReplyTotalPages] = useState(1);
+
+  useEffect(() => {
+    setReplyTotalPages(Math.ceil(unrepliedComments.length / replyLimit));
+    setReplyPage(1); // reset về trang 1 mỗi khi data đổi
+  }, [unrepliedComments]);
+
+  const currentReplyData = unrepliedComments.slice(
+    (replyPage - 1) * replyLimit,
+    replyPage * replyLimit
+  );
 
   useEffect(() => {
     fetchComments();
@@ -53,13 +70,21 @@ function CommentPage() {
         break;
       case "highest_rating":
         data = data.filter((p) => p.total_comments > 0);
-        data.sort((a, b) => parseFloat(b.average_rating) - parseFloat(a.average_rating));
+        data.sort(
+          (a, b) =>
+            parseFloat(b.average_rating) - parseFloat(a.average_rating)
+        );
         break;
       case "lowest_rating":
-        data = data.sort((a, b) => parseFloat(a.average_rating) - parseFloat(b.average_rating));
+        data = data.sort(
+          (a, b) =>
+            parseFloat(a.average_rating) - parseFloat(b.average_rating)
+        );
         break;
       default:
-        data.sort((a, b) => (a.product_name || "").localeCompare(b.product_name || ""));
+        data.sort((a, b) =>
+          (a.product_name || "").localeCompare(b.product_name || "")
+        );
     }
     setFilteredProducts(data);
     setCurrentPage(1);
@@ -67,7 +92,9 @@ function CommentPage() {
 
   const fetchComments = async () => {
     try {
-      const response = await axios.get(`${Constants.DOMAIN_API}/admin/comment/list?includeReplies=true`);
+      const response = await axios.get(
+        `${Constants.DOMAIN_API}/admin/comment/list?includeReplies=true`
+      );
       const comments = response.data.data || [];
       const productMap = {};
       const unrepliedList = [];
@@ -111,7 +138,7 @@ function CommentPage() {
       }));
 
       setAllProducts(result);
-      setFilteredProducts(result); // 👈 Gán dữ liệu mặc định để hiển thị
+      setFilteredProducts(result);
       setUnrepliedComments(unrepliedList);
     } catch (error) {
       console.error("Lỗi lấy danh sách bình luận:", error);
@@ -120,7 +147,7 @@ function CommentPage() {
 
   const handleSearch = () => {
     const term = searchTerm.trim().toLowerCase();
-    const result = allProducts.filter(product =>
+    const result = allProducts.filter((product) =>
       product.product_name?.toLowerCase().includes(term)
     );
     setFilteredProducts(result);
@@ -134,6 +161,11 @@ function CommentPage() {
   const handleReplySubmit = async (parentId) => {
     if (!replyText.trim()) return;
 
+    if (submittingId === parentId) {
+      toast.warning("Đang gửi, vui lòng chờ...");
+      return;
+    }
+
     const token = localStorage.getItem("token");
     const decoded = decodeToken(token);
     const userId = decoded?.id;
@@ -144,6 +176,7 @@ function CommentPage() {
     }
 
     try {
+      setSubmittingId(parentId);
       await axios.post(`${Constants.DOMAIN_API}/admin/comment/reply`, {
         parent_id: parentId,
         comment_text: replyText,
@@ -156,10 +189,13 @@ function CommentPage() {
       fetchComments();
     } catch (error) {
       toast.error("Gửi trả lời thất bại");
+    } finally {
+      setSubmittingId(null);
     }
   };
 
-  const renderPagination = () => {
+  // ✅ Hàm phân trang tái sử dụng
+  const renderPagination = (currentPage, totalPages, setPage) => {
     const pages = [];
     const start = Math.max(1, currentPage - 1);
     const end = Math.min(totalPages, currentPage + 1);
@@ -167,8 +203,10 @@ function CommentPage() {
       pages.push(
         <button
           key={i}
-          onClick={() => setCurrentPage(i)}
-          className={`px-3 py-1 border rounded ${i === currentPage ? "bg-blue-600 text-white" : "bg-white"}`}
+          onClick={() => setPage(i)}
+          className={`px-3 py-1 border rounded ${
+            i === currentPage ? "bg-blue-600 text-white" : "bg-white"
+          }`}
         >
           {i}
         </button>
@@ -176,11 +214,28 @@ function CommentPage() {
     }
     return (
       <div className="flex justify-center gap-2 mt-4">
-        <button disabled={currentPage === 1} onClick={() => setCurrentPage(1)}><FaAngleDoubleLeft /></button>
-        <button disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}><FaChevronLeft /></button>
+        <button disabled={currentPage === 1} onClick={() => setPage(1)}>
+          <FaAngleDoubleLeft />
+        </button>
+        <button
+          disabled={currentPage === 1}
+          onClick={() => setPage(currentPage - 1)}
+        >
+          <FaChevronLeft />
+        </button>
         {pages}
-        <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}><FaChevronRight /></button>
-        <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(totalPages)}><FaAngleDoubleRight /></button>
+        <button
+          disabled={currentPage === totalPages}
+          onClick={() => setPage(currentPage + 1)}
+        >
+          <FaChevronRight />
+        </button>
+        <button
+          disabled={currentPage === totalPages}
+          onClick={() => setPage(totalPages)}
+        >
+          <FaAngleDoubleRight />
+        </button>
       </div>
     );
   };
@@ -191,29 +246,45 @@ function CommentPage() {
         <div className="col-12 d-flex align-items-stretch">
           <div className="card w-100">
             <div className="card-body p-4">
-              <h5 className="card-title fw-semibold mb-4">Đánh giá theo sản phẩm</h5>
+              <h5 className="card-title fw-semibold mb-4">
+                Đánh giá theo sản phẩm
+              </h5>
 
               {/* Tabs */}
               <div className="flex flex-wrap items-center gap-6 border-b border-gray-200 px-6 py-4 mb-4">
-                {[{
-                  key: "all", label: "Tất cả sản phẩm"
-                }, {
-                  key: "most_comments", label: "Nhiều Đánh Giá nhất"
-                }, {
-                  key: "highest_rating", label: "Đánh giá cao nhất"
-                }, {
-                  key: "lowest_rating", label: "Đánh giá thấp nhất"
-                }, {
-                  key: "reply", label: "Trả lời Đánh Giá", count: unrepliedComments.length, color: "bg-blue-300", textColor: "text-blue-800"
-                }].map(({ key, label, count, color, textColor }) => (
+                {[
+                  { key: "all", label: "Tất cả sản phẩm" },
+                  { key: "most_comments", label: "Nhiều Đánh Giá nhất" },
+                  { key: "highest_rating", label: "Đánh giá cao nhất" },
+                  { key: "lowest_rating", label: "Đánh giá thấp nhất" },
+                  {
+                    key: "reply",
+                    label: "Trả lời Đánh Giá",
+                    count: unrepliedComments.length,
+                    color: "bg-blue-300",
+                    textColor: "text-blue-800",
+                  },
+                ].map(({ key, label, count, color, textColor }) => (
                   <button
                     key={key}
                     onClick={() => setStatusFilter(key)}
-                    className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold ${statusFilter === key ? "bg-blue-900 text-white" : "bg-white text-gray-700"}`}
+                    className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold ${
+                      statusFilter === key
+                        ? "bg-blue-900 text-white"
+                        : "bg-white text-gray-700"
+                    }`}
                   >
                     <span>{label}</span>
                     {key === "reply" && (
-                      <span className={`inline-block ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${statusFilter === key ? "bg-white text-blue-900" : `${color} ${textColor}`}`}>{count}</span>
+                      <span
+                        className={`inline-block ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${
+                          statusFilter === key
+                            ? "bg-white text-blue-900"
+                            : `${color} ${textColor}`
+                        }`}
+                      >
+                        {count}
+                      </span>
                     )}
                   </button>
                 ))}
@@ -229,7 +300,12 @@ function CommentPage() {
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                   className="border rounded w-full px-3 py-2"
                 />
-                <button onClick={handleSearch} className="bg-[#073272] text-white px-4 py-2 rounded"><FaSearch /></button>
+                <button
+                  onClick={handleSearch}
+                  className="bg-[#073272] text-white px-4 py-2 rounded"
+                >
+                  <FaSearch />
+                </button>
               </div>
 
               {/* Table */}
@@ -253,20 +329,25 @@ function CommentPage() {
                           <td>{product.total_comments}</td>
                           <td>{product.average_rating}</td>
                           <td>
-                            <Link to={`/admin/comments/detail/${product.product_id}`} className="bg-blue-500 text-white p-2 rounded w-10 h-10 inline-flex items-center justify-center"><FaEye size={16} className="font-bold" /></Link>
+                            <Link
+                              to={`/admin/comments/detail/${product.product_id}`}
+                              className="bg-blue-500 text-white p-2 rounded w-10 h-10 inline-flex items-center justify-center"
+                            >
+                              <FaEye size={16} className="font-bold" />
+                            </Link>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                  {renderPagination()}
+                  {renderPagination(currentPage, totalPages, setCurrentPage)}
                 </div>
               ) : (
                 <div className="table-responsive">
                   <table className="table text-nowrap mb-0 align-middle">
                     <thead className="bg-gray-100">
                       <tr>
-                        <th className="border p-2" >#</th>
+                        <th className="border p-2">#</th>
                         <th className="border p-2">Người dùng</th>
                         <th className="border p-2">Nội dung</th>
                         <th className="border p-2">Số sao</th>
@@ -275,30 +356,90 @@ function CommentPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {unrepliedComments.map((comment, index) => (
-                        <>
-                          <tr key={comment.id}>
-                            <td>{index + 1}</td>
-                            <td>{comment.user?.name || 'Ẩn danh'}</td>
-                            <td>{comment.comment_text}</td>
-                            <td>{comment.rating}</td>
-                            <td>{new Date(comment.created_at).toLocaleDateString()}</td>
+                      {currentReplyData.map((comment, index) => (
+                        <React.Fragment key={comment.id}>
+                          <tr>
+                            <td>{(replyPage - 1) * replyLimit + index + 1}</td>
+                            <td>{comment.user?.name || "Ẩn danh"}</td>
                             <td>
-                              <button onClick={() => setExpandedCommentId(expandedCommentId === comment.id ? null : comment.id)} className="btn btn-sm btn-primary">Trả lời</button>
+                              {(() => {
+                                const text = comment.comment_text || "";
+                                const isExpanded =
+                                  expandedCommentId === `cmt-${comment.id}`;
+                                const limit = 50;
+                                const shouldTruncate = text.length > limit;
+                                const displayText = isExpanded
+                                  ? text
+                                  : text.slice(0, limit) +
+                                    (shouldTruncate ? "..." : "");
+
+                                return (
+                                  <>
+                                    {displayText}
+                                    {shouldTruncate && (
+                                      <button
+                                        onClick={() =>
+                                          setExpandedCommentId(
+                                            isExpanded ? null : `cmt-${comment.id}`
+                                          )
+                                        }
+                                        className="text-blue-500 ml-2"
+                                      >
+                                        {isExpanded ? "Thu gọn" : "Xem thêm"}
+                                      </button>
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </td>
+                            <td>{comment.rating}</td>
+                            <td>
+                              {new Date(comment.created_at).toLocaleDateString()}
+                            </td>
+                            <td>
+                              <button
+                                onClick={() =>
+                                  setExpandedCommentId(
+                                    expandedCommentId === comment.id
+                                      ? null
+                                      : comment.id
+                                  )
+                                }
+                                className="btn btn-sm btn-primary"
+                              >
+                                Trả lời
+                              </button>
                             </td>
                           </tr>
                           {expandedCommentId === comment.id && (
                             <tr>
                               <td colSpan="6">
-                                <textarea className="form-control mb-2" rows="3" value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Nhập nội dung trả lời..."></textarea>
-                                <button className="btn btn-success btn-sm" onClick={() => handleReplySubmit(comment.id)}>Gửi trả lời</button>
+                                <textarea
+                                  className="form-control mb-2"
+                                  rows="3"
+                                  value={replyText}
+                                  onChange={(e) =>
+                                    setReplyText(e.target.value)
+                                  }
+                                  placeholder="Nhập nội dung trả lời..."
+                                ></textarea>
+                                <button
+                                  className="btn btn-success btn-sm"
+                                  disabled={submittingId === comment.id}
+                                  onClick={() => handleReplySubmit(comment.id)}
+                                >
+                                  {submittingId === comment.id
+                                    ? "Đang gửi..."
+                                    : "Gửi trả lời"}
+                                </button>
                               </td>
                             </tr>
                           )}
-                        </>
+                        </React.Fragment>
                       ))}
                     </tbody>
                   </table>
+                  {renderPagination(replyPage, replyTotalPages, setReplyPage)}
                 </div>
               )}
             </div>

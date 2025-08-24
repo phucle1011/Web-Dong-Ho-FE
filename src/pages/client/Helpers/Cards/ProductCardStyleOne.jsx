@@ -1267,53 +1267,75 @@ const displayName = variantLabel
             />
           </span>
         </a>
-        <a
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            const allVariants = variants.map((variant) => ({
-              productId: product.id,
-              productName: product.name,
-              productDescription: product.description,
-              productThumbnail: product.thumbnail,
-              brand: product.brand?.name || "-",
-              averageRating: product.averageRating,
-              ratingCount: product.ratingCount,
+<a
+  href="#"
+  onClick={async (e) => {
+    e.preventDefault();
+
+    try {
+      
+      const res = await fetch("https://web-dong-ho-be.onrender.com/products/compare");
+      const data = await res.json();
+      const allVariants = [];
+
+      data.data.forEach((p) => {
+        p.variants.forEach((variant) => {
+          if (!variant.isAuction) {
+            allVariants.push({
+              productId: p.id,
+              productName: p.name,
+              productDescription: p.description,
+              productThumbnail: p.thumbnail,
+              brand: p.brand?.name || "-",
+              averageRating: p.average_rating || 0,
+              ratingCount: p.rating_count || 0,
               variantId: variant.id,
               price: variant.price,
               stock: variant.stock,
               sku: variant.sku,
-              images: variant.images,
-              attributeValues: variant.attributeValues,
-            }));
-            const clickedVariant = allVariants.find(
-              (v) =>
-                v.productId === product.id &&
-                v.variantId === (selectedVariant?.id || variants?.[0]?.id)
-            );
-            if (!clickedVariant) {
-              toast.error("Sản phẩm không có biến thể hợp lệ để so sánh.");
-              return;
-            }
-            const current =
-              JSON.parse(localStorage.getItem("compareList")) || [];
-            const exists = current.find(
-              (item) => item.variantId === clickedVariant.variantId
-            );
-            if (!exists) {
-              const updated = [...current, clickedVariant].slice(0, 4);
-              localStorage.setItem("compareList", JSON.stringify(updated));
-              toast.success("Đã thêm sản phẩm vào so sánh!");
-            } else {
-              toast.info("Sản phẩm đã có trong danh sách so sánh!");
-            }
-            navigate("/products-compaire");
-          }}
-        >
-          <span className="w-10 h-10 flex justify-center items-center bg-primarygray rounded">
-            <Compair className="w-5 h-5" />
-          </span>
-        </a>
+              images: variant.images || [],
+              attributeValues: variant.attributeValues || [],
+            });
+          }
+        });
+      });
+
+      // tìm biến thể người dùng đang chọn
+      const clickedVariant = allVariants.find(
+        (v) =>
+          v.productId === product.id &&
+          v.variantId === (selectedVariant?.id || variants?.[0]?.id)
+      );
+
+      if (!clickedVariant) {
+        toast.error("Sản phẩm không có biến thể hợp lệ để so sánh.");
+        return;
+      }
+
+      const current = JSON.parse(localStorage.getItem("compareList")) || [];
+      const exists = current.find(
+        (item) => item.variantId === clickedVariant.variantId
+      );
+
+      if (!exists) {
+        const updated = [...current, clickedVariant].slice(0, 4);
+        localStorage.setItem("compareList", JSON.stringify(updated));
+        toast.success("Đã thêm sản phẩm vào so sánh!");
+      } else {
+        toast.info("Sản phẩm đã có trong danh sách so sánh!");
+      }
+
+      navigate("/products-compaire");
+    } catch (error) {
+      console.error(error);
+      toast.error("Không thể tải dữ liệu sản phẩm để so sánh");
+    }
+  }}
+>
+  <span className="w-10 h-10 flex justify-center items-center bg-primarygray rounded">
+    <Compair className="w-5 h-5" />
+  </span>
+</a>
       </div>
       <QuickViewDialog />
     </div>
