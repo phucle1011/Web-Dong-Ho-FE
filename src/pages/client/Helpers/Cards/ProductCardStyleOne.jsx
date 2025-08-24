@@ -237,7 +237,7 @@ const hydrateSelectedVariant = async (productId, variantId) => {
         const now = Date.now();
         if (now - lastHydrateErrorAtRef.current > 4000) {
           lastHydrateErrorAtRef.current = now;
-          toast.error("Không thể tải thông tin biến thể, sẽ dùng dữ liệu mặc định.");
+          // toast.error("Không thể tải thông tin biến thể, sẽ dùng dữ liệu mặc định.");
         }
 
         return null;
