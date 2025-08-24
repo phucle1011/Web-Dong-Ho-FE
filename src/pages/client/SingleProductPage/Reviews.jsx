@@ -25,12 +25,7 @@ const ProductReviewSection = () => {
 
   const { state } = useLocation();
   const navigate = useNavigate();
-  // useEffect(() => {
-  //     if (!state?.productId) {
-  //       toast.error("Thiếu thông tin sản phẩm!");
-  //       navigate("/all-products");
-  //     }
-  //   }, [state]);
+
   const { productId } = state || {};
   useEffect(() => {
     const storedOrderDetailId = sessionStorage.getItem("pendingReviewOrderDetailId");
@@ -118,7 +113,7 @@ const ProductReviewSection = () => {
   const handleImageChange = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length > 3) {
-      toast.error("Chỉ được tải tối đa 3 ảnh. Vui lòng chọn lại.");
+      toast.warning("Chỉ được tải tối đa 3 ảnh. Vui lòng chọn lại.");
 
       e.target.value = null;
       return;
@@ -128,7 +123,7 @@ const ProductReviewSection = () => {
     for (const file of files) {
       const isWatch = await isWatchImage(file);
       if (!isWatch) {
-        toast.error("Một hoặc nhiều ảnh bạn tải lên không phải là đồng hồ. Vui lòng chọn lại.");
+        
 
         e.target.value = null;
         return;

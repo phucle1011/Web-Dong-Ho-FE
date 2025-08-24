@@ -74,7 +74,7 @@ export default function Contact() {
     }
 
     if (!first_name || !email || !subject || !message) {
-      toast.error("Vui lòng điền đầy đủ thông tin!");
+      toast.warning("Vui lòng điền đầy đủ thông tin!");
       return false;
     }
 
