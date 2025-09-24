@@ -4,6 +4,7 @@ import Layout from "../../Partials/LayoutHomeThree";
 import { toast } from "react-toastify";
 import axios from "axios";
 import Thumbnail from "./Thumbnail";
+import Constants from "../../../../Constants.jsx";
 
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
@@ -42,7 +43,7 @@ export default function ResetPassword() {
     setLoading(true);
     try {
       const response = await axios.post(
-        `https://web-dong-ho-be.onrender.com/auth/update-password/${token}`,
+        `${Constants.DOMAIN_API}/auth/update-password/${token}`,
         { password }
       );
       if (response.data.success) {

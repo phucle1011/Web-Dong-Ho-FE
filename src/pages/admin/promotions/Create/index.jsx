@@ -41,16 +41,23 @@ function PromotionCreate() {
       min_price_threshold: "",
       max_price_threshold: "",
       user_ids: [],
+      send_email: false,
+      email_subject: "",
+      email_content: "",
     },
   });
 
   const applicableTo = watch("applicable_to");
   const discountType = watch("discount_type");
 
+  const sendEmail = watch("send_email");
+
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const res = await axios.get(`${Constants.DOMAIN_API}/admin/promotions/getusers`);
+        const res = await axios.get(
+          `${Constants.DOMAIN_API}/admin/promotions/getusers`
+        );
         setUsers(res.data.data);
       } catch (err) {
         console.error("Lỗi khi lấy danh sách người dùng:", err);
@@ -95,7 +102,9 @@ function PromotionCreate() {
           <span className="text-sm">
             (
             <FaArrowUp className="inline text-green-600 mr-1" />
-            <span className="text-green-600">{user.total_orders} đơn</span> -{" "}
+            <span className="text-green-600">
+              {user.total_orders} đơn
+            </span> -{" "}
             <span className="text-yellow-500">
               {user.total_spent_in_month.toLocaleString("vi-VN")}₫
             </span>
@@ -116,7 +125,10 @@ function PromotionCreate() {
     if (selectAllUsers) {
       setValue("user_ids", []);
     } else {
-      setValue("user_ids", users.map((u) => u.id));
+      setValue(
+        "user_ids",
+        users.map((u) => u.id)
+      );
     }
     setSelectAllUsers(!selectAllUsers);
   };
@@ -156,7 +168,10 @@ function PromotionCreate() {
     }
 
     try {
-      await axios.post(`${Constants.DOMAIN_API}/admin/promotions/create`, postData);
+      await axios.post(
+        `${Constants.DOMAIN_API}/admin/promotions/create`,
+        postData
+      );
       toast.success("Tạo khuyến mãi thành công");
       navigate("/admin/promotions/getAll");
     } catch (error) {
@@ -174,8 +189,11 @@ function PromotionCreate() {
   return (
     <div className="container mx-auto p-4 bg-white shadow rounded">
       <h2 className="text-xl font-semibold mb-4">Thêm khuyến mãi mới</h2>
-      <form onSubmit={handleSubmit(onSubmit)} class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="flex-1 border border-gray-300 rounded p-4 shadow-lg bg-white mb-6 md:mb-0">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="grid grid-cols-1 md:grid-cols-2 gap-6"
+      >
+        <div className="flex-1 border border-gray-300 rounded p-4 shadow-lg bg-white mb-6 md:mb-0">
           <div>
             <label className="block mb-1 font-medium">Tên khuyến mãi</label>
             <input
@@ -188,12 +206,17 @@ function PromotionCreate() {
               })}
               className="w-full border rounded px-3 py-2"
             />
-            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
+            {errors.name && (
+              <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
+            )}
           </div>
 
           <div>
             <label className="block mb-1 font-medium">Loại giảm giá</label>
-            <select {...register("discount_type")} className="w-full border rounded px-3 py-2">
+            <select
+              {...register("discount_type")}
+              className="w-full border rounded px-3 py-2"
+            >
               <option value="percentage">Phần trăm (%)</option>
               <option value="fixed">Cố định (VNĐ)</option>
             </select>
@@ -210,7 +233,9 @@ function PromotionCreate() {
                 rules={{
                   required: "Vui lòng nhập giá trị giảm",
                   validate: (value) => {
-                    const minThreshold = Number(getValues("min_price_threshold") || 0);
+                    const minThreshold = Number(
+                      getValues("min_price_threshold") || 0
+                    );
                     const val = Number(value);
 
                     if (val < 0) {
@@ -220,7 +245,9 @@ function PromotionCreate() {
                       return "Giá trị giảm phải nhỏ hơn giá trị đơn hàng tối thiểu";
                     }
                     if (val > minThreshold * 0.8) {
-                      return `Giá trị giảm không được vượt quá 80% đơn hàng (${(minThreshold * 0.8).toLocaleString("vi-VN")}₫)`;
+                      return `Giá trị giảm không được vượt quá 80% đơn hàng (${(
+                        minThreshold * 0.8
+                      ).toLocaleString("vi-VN")}₫)`;
                     }
 
                     return true;
@@ -235,7 +262,9 @@ function PromotionCreate() {
                   const handleChange = (e) => {
                     const formatted = formatVND(e.target.value);
                     e.target.value = formatted;
-                    const rawNumber = parseInt(formatted.replace(/\D/g, "") || "0");
+                    const rawNumber = parseInt(
+                      formatted.replace(/\D/g, "") || "0"
+                    );
                     field.onChange(rawNumber);
                   };
 
@@ -272,13 +301,14 @@ function PromotionCreate() {
               />
             )}
             {errors.discount_value && (
-              <p className="text-red-500 text-sm mt-1">{errors.discount_value.message}</p>
+              <p className="text-red-500 text-sm mt-1">
+                {errors.discount_value.message}
+              </p>
             )}
           </div>
         </div>
 
-        <div class="flex-1 border border-gray-300 rounded p-4 shadow-lg bg-white mb-6 md:mb-0">
-
+        <div className="flex-1 border border-gray-300 rounded p-4 shadow-lg bg-white mb-6 md:mb-0">
           <div>
             <label className="block mb-1 font-medium">Số lượt áp dụng</label>
             <input
@@ -291,24 +321,30 @@ function PromotionCreate() {
               disabled={showUserList}
             />
             {errors.quantity && (
-              <p className="text-red-500 text-sm mt-1">{errors.quantity.message}</p>
+              <p className="text-red-500 text-sm mt-1">
+                {errors.quantity.message}
+              </p>
             )}
             {showUserList && (
               <p className="text-sm text-red-500 mt-1 italic">
-                Số lượt áp dụng sẽ tự động bằng số khách hàng đặc biệt được chọn.
+                Số lượt áp dụng sẽ tự động bằng số khách hàng đặc biệt được
+                chọn.
               </p>
             )}
           </div>
 
           <div>
-            <label className="block mb-1 font-medium">Áp dụng cho đơn hàng từ (VNĐ)</label>
+            <label className="block mb-1 font-medium">
+              Áp dụng cho đơn hàng từ (VNĐ)
+            </label>
             <Controller
               control={control}
               name="min_price_threshold"
               rules={{
                 required: "Vui lòng nhập ngưỡng giá",
                 validate: (value) =>
-                  parseInt(value?.toString().replace(/\D/g, "") || "0") >= 0 || "Giá trị phải >= 0",
+                  parseInt(value?.toString().replace(/\D/g, "") || "0") >= 0 ||
+                  "Giá trị phải >= 0",
               }}
               render={({ field }) => {
                 const formatVND = (value) => {
@@ -318,7 +354,9 @@ function PromotionCreate() {
                 const handleChange = (e) => {
                   const formatted = formatVND(e.target.value);
                   e.target.value = formatted;
-                  const rawNumber = parseInt(formatted.replace(/\D/g, "") || "0");
+                  const rawNumber = parseInt(
+                    formatted.replace(/\D/g, "") || "0"
+                  );
                   field.onChange(rawNumber);
                 };
                 const displayValue =
@@ -336,30 +374,40 @@ function PromotionCreate() {
               }}
             />
             {errors.min_price_threshold && (
-              <p className="text-red-500 text-sm mt-1">{errors.min_price_threshold.message}</p>
+              <p className="text-red-500 text-sm mt-1">
+                {errors.min_price_threshold.message}
+              </p>
             )}
           </div>
 
           {/* Conditionally render Số tiền giảm giá tối đa */}
           {discountType === "percentage" && (
             <div>
-              <label className="block mb-1 font-medium">Số tiền giảm giá tối đa (VNĐ)</label>
+              <label className="block mb-1 font-medium">
+                Số tiền giảm giá tối đa (VNĐ)
+              </label>
               <Controller
                 control={control}
                 name="max_price"
                 rules={{
                   required: "Vui lòng nhập số tiền giảm tối đa",
                   validate: (value) => {
-                    const num = parseInt(value?.toString().replace(/\D/g, "") || "0");
+                    const num = parseInt(
+                      value?.toString().replace(/\D/g, "") || "0"
+                    );
                     if (isNaN(num)) return "Phải là số hợp lệ";
                     if (num < 0) return "Phải lớn hơn hoặc bằng 0";
 
                     const discountValue = Number(getValues("discount_value"));
                     const minPrice = parseInt(
-                      getValues("min_price_threshold")?.toString().replace(/\D/g, "") || "0"
+                      getValues("min_price_threshold")
+                        ?.toString()
+                        .replace(/\D/g, "") || "0"
                     );
 
-                    const minDiscountAmount = Math.floor((discountValue / 100) * minPrice);
+                    const minDiscountAmount = Math.floor(
+                      (discountValue / 100) * minPrice
+                    );
 
                     if (num < minDiscountAmount) {
                       return `Số tiền giảm tối đa phải lớn hơn hoặc bằng ${minDiscountAmount.toLocaleString(
@@ -378,7 +426,9 @@ function PromotionCreate() {
                   const handleChange = (e) => {
                     const formatted = formatVND(e.target.value);
                     e.target.value = formatted;
-                    const rawNumber = parseInt(formatted.replace(/\D/g, "") || "0");
+                    const rawNumber = parseInt(
+                      formatted.replace(/\D/g, "") || "0"
+                    );
                     field.onChange(rawNumber);
                   };
                   const displayValue =
@@ -396,15 +446,15 @@ function PromotionCreate() {
                 }}
               />
               {errors.max_price && (
-                <p className="text-red-500 text-sm mt-1">{errors.max_price.message}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.max_price.message}
+                </p>
               )}
             </div>
           )}
-
         </div>
 
         <div class="flex-1 border border-gray-300 rounded p-4 shadow-lg bg-white mb-6 md:mb-0">
-
           <div className="w-full col-span-full relative z-10">
             <label className="block mb-1 font-medium">Ngày bắt đầu</label>
             <Controller
@@ -423,7 +473,9 @@ function PromotionCreate() {
               )}
             />
             {errors.start_date && (
-              <p className="text-red-500 text-sm mt-1">{errors.start_date.message}</p>
+              <p className="text-red-500 text-sm mt-1">
+                {errors.start_date.message}
+              </p>
             )}
           </div>
 
@@ -436,7 +488,10 @@ function PromotionCreate() {
                 required: "Vui lòng chọn ngày kết thúc",
                 validate: (endDate) => {
                   if (!startDate) return true;
-                  return endDate >= startDate || "Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu";
+                  return (
+                    endDate >= startDate ||
+                    "Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu"
+                  );
                 },
               }}
               render={({ field }) => (
@@ -451,24 +506,30 @@ function PromotionCreate() {
               )}
             />
             {errors.end_date && (
-              <p className="text-red-500 text-sm mt-1">{errors.end_date.message}</p>
+              <p className="text-red-500 text-sm mt-1">
+                {errors.end_date.message}
+              </p>
             )}
           </div>
         </div>
 
-        <div class="flex-1 border border-gray-300 rounded p-4 shadow-lg bg-white mb-6 md:mb-0">
+        <div className="flex-1 border border-gray-300 rounded p-4 shadow-lg bg-white mb-6 md:mb-0">
           <div className="flex flex-col space-y-6">
             <div>
               <label className="block mb-1 font-medium">Áp dụng cho</label>
               <select
-                {...register("applicable_to", { required: "Vui lòng chọn trường này" })}
+                {...register("applicable_to", {
+                  required: "Vui lòng chọn trường này",
+                })}
                 className="w-full border rounded px-3 py-2"
               >
                 <option value="order">Đơn hàng</option>
                 <option value="product">Sản phẩm</option>
               </select>
               {errors.applicable_to && (
-                <p className="text-red-500 text-sm mt-1">{errors.applicable_to.message}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.applicable_to.message}
+                </p>
               )}
             </div>
 
@@ -491,7 +552,6 @@ function PromotionCreate() {
           </div>
         </div>
         <div className="w-full col-span-full relative z-10">
-
           {applicableTo === "order" && (
             <div>
               <label className="block mb-1 font-medium flex items-center justify-between">
@@ -507,18 +567,30 @@ function PromotionCreate() {
                 </label>
               </label>
 
-              {showUserList && (
-                <div className="mb-2">
-                  <input
-                    type="checkbox"
-                    id="selectAll"
-                    checked={selectAllUsers}
-                    onChange={handleSelectAllUsers}
-                    className="mr-2"
-                  />
-                  <label htmlFor="selectAll" className="text-sm">Chọn tất cả khách hàng</label>
-                </div>
-              )}
+              <div className="flex items-center justify-between flex-wrap gap-3 mb-2">
+                {showUserList && (
+                  <label
+                    htmlFor="selectAll"
+                    className="inline-flex items-center"
+                  >
+                    <input
+                      type="checkbox"
+                      id="selectAll"
+                      checked={selectAllUsers}
+                      onChange={handleSelectAllUsers}
+                      className="mr-2"
+                    />
+                    <span className="text-sm">Chọn tất cả khách hàng</span>
+                  </label>
+                )}
+
+                {showUserList && (
+                  <label className="inline-flex items-center gap-2 ml-auto">
+                    <input type="checkbox" {...register("send_email")} />
+                    <span>Gửi email thông báo khuyến mãi cho khách hàng</span>
+                  </label>
+                )}
+              </div>
 
               <Controller
                 name="user_ids"
@@ -530,9 +602,13 @@ function PromotionCreate() {
                     isMulti
                     closeMenuOnSelect={false}
                     onChange={(selected) => {
-                      field.onChange(selected ? selected.map((item) => item.value) : []);
+                      field.onChange(
+                        selected ? selected.map((item) => item.value) : []
+                      );
                     }}
-                    value={userOptions.filter((option) => field.value.includes(option.value))}
+                    value={userOptions.filter((option) =>
+                      field.value.includes(option.value)
+                    )}
                     placeholder="Chọn khách hàng..."
                     isDisabled={!showUserList}
                   />
@@ -556,9 +632,23 @@ function PromotionCreate() {
                   height: 400,
                   menubar: true,
                   plugins: [
-                    "advlist", "autolink", "lists", "link", "image", "charmap", "preview", "anchor",
-                    "searchreplace", "visualblocks", "code", "fullscreen",
-                    "insertdatetime", "media", "table", "help", "wordcount"
+                    "advlist",
+                    "autolink",
+                    "lists",
+                    "link",
+                    "image",
+                    "charmap",
+                    "preview",
+                    "anchor",
+                    "searchreplace",
+                    "visualblocks",
+                    "code",
+                    "fullscreen",
+                    "insertdatetime",
+                    "media",
+                    "table",
+                    "help",
+                    "wordcount",
                   ],
                   toolbar:
                     "undo redo | formatselect | bold italic backcolor | \
@@ -591,7 +681,10 @@ function PromotionCreate() {
         </div>
 
         <div className="md:col-span-2 mt-6 flex gap-6">
-          <button type="submit" className="bg-[#073272] text-white px-6 py-2 rounded">
+          <button
+            type="submit"
+            className="bg-[#073272] text-white px-6 py-2 rounded"
+          >
             Tạo khuyến mãi
           </button>
 
@@ -603,7 +696,6 @@ function PromotionCreate() {
             Quay lại
           </button>
         </div>
-
       </form>
     </div>
   );

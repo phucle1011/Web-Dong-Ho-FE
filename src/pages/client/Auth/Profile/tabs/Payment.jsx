@@ -602,6 +602,7 @@ function TermsModal({ onClose }) {
               <li><strong>Cách nạp: </strong>Chuyển khoản ngân hàng (Stripe).</li>
               <li><strong>Thời gian xử lý: </strong>Thường cộng tiền ngay.</li>
               <li><strong>Phí: </strong>Hoàn toàn miễn phí.</li>
+              <li><strong>Hiện tại chúng tôi chỉ hổ trợ nạp tiền bằng thẻ visa(Stribe), xin quý khách thông cảm vì sự bất tiện này!</strong></li>
               <li>Nếu giao dịch đã trừ tiền từ ngân hàng chưa cộng vào Ví, vui lòng liên hệ chúng tôi để được hỗ trợ ngay kèm hình ảnh minh chứng; chúng tôi sẽ kiểm tra và xử lý ngay.</li>
             </ul>
 

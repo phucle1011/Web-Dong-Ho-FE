@@ -29,10 +29,18 @@ const PromotionProductForm = ({ onSuccess }) => {
     formState: { errors },
   } = useForm();
 
+  // Số lượt còn lại của khuyến mãi đang chọn
   const remainingQty = selectedPromotion?.quantity
     ? Number(selectedPromotion.quantity)
     : 0;
 
+  // Calculate total quantity of selected variants
+  const totalQuantity = Object.values(variantQuantities).reduce(
+    (sum, qty) => sum + (parseInt(qty) || 0),
+    0
+  );
+
+  // Hết lượt thì báo và khóa chọn biến thể
   useEffect(() => {
     if (!selectedPromotion) return;
     if (remainingQty <= 0) {
@@ -161,7 +169,7 @@ const PromotionProductForm = ({ onSuccess }) => {
   }, []);
 
   const onSubmit = async (data) => {
-    if (isLoading) return;
+    if (isLoading) return; // Ngăn gửi trùng lặp
 
     const selectedPromotion = promotions.find(
       (p) => p.id === parseInt(data.promotion_id)
@@ -171,14 +179,10 @@ const PromotionProductForm = ({ onSuccess }) => {
       return;
     }
 
-    // Tính tổng số lượng áp dụng từ variant_quantities
-    const totalQuantity = data.product_variant_id.reduce((sum, id) => {
-      return sum + (parseInt(variantQuantities[id]) || 1);
-    }, 0);
-
+    // Validate total quantity against remainingQty
     if (totalQuantity > selectedPromotion.quantity) {
       toast.error(
-        `Tổng số lượng áp dụng (${totalQuantity}) vượt quá số lượt khả dụng của khuyến mãi (${selectedPromotion.quantity}).`
+        `Tổng số lượng áp dụng (${totalQuantity}) vượt quá số lượt khả dụng (${selectedPromotion.quantity}).`
       );
       return;
     }
@@ -206,6 +210,7 @@ const PromotionProductForm = ({ onSuccess }) => {
       usedVariantIds.includes(parseInt(id))
     );
 
+    // Nếu khuyến mãi đang chọn KHÔNG phải "Sắp bắt đầu" thì mới chặn
     if (!isSelectedPromoUpcoming && usedVariants.length > 0) {
       const variantDetails = usedVariants
         .map((id) => {
@@ -238,8 +243,10 @@ const PromotionProductForm = ({ onSuccess }) => {
 
       toast.success("Thêm sản phẩm khuyến mãi thành công!");
 
+      // Cập nhật lại dữ liệu
       await Promise.all([fetchPromotions(), fetchUsedVariantsAndPromotions()]);
 
+      // Cập nhật danh sách đã sử dụng
       setUsedVariantIds((prev) => [
         ...new Set([
           ...prev,
@@ -286,6 +293,9 @@ const PromotionProductForm = ({ onSuccess }) => {
 
   const availablePromotions = promotions.filter((promo) => {
     const { status } = getPromotionStatus(promo.start_date, promo.end_date);
+    // Cho phép chọn nếu:
+    // - Chưa dùng, hoặc
+    // - Sắp bắt đầu (dù đã có dùng), và còn lượt
     const allowWhenUpcoming = status === "Sắp bắt đầu";
     const notUsed = !usedPromotionIds.includes(promo.id);
     return (notUsed || allowWhenUpcoming) && promo.quantity > 0;
@@ -293,14 +303,21 @@ const PromotionProductForm = ({ onSuccess }) => {
 
   const availableVariants = productVariants
     .filter((variant) => {
+      // Ẩn biến thể hết hàng
       if (!variant.stock || Number(variant.stock) <= 0) return false;
+
+      // Nếu promo đang chọn KHÔNG phải "Sắp bắt đầu" => chặn biến thể đã dùng ở promo khác
       if (!isSelectedPromoUpcoming && usedVariantIds.includes(variant.id)) return false;
+
+      // Áp ngưỡng tối thiểu giá (nếu có)
       if (
         selectedPromotion?.min_price_threshold &&
         parseFloat(variant.price) < parseFloat(selectedPromotion.min_price_threshold)
       ) {
         return false;
       }
+
+      // Không để finalPrice <= 0
       if (selectedPromotion) {
         const price = parseFloat(variant.price);
         let finalPrice = price;
@@ -311,6 +328,7 @@ const PromotionProductForm = ({ onSuccess }) => {
         }
         if (finalPrice <= 0) return false;
       }
+
       return true;
     })
     .map((variant) => ({
@@ -371,6 +389,7 @@ const PromotionProductForm = ({ onSuccess }) => {
     };
   });
 
+  // Tạo object {id: 1} cho các id đã chọn để khởi tạo số lượng
   const initQuantitiesFor = (ids) => {
     const q = {};
     ids.forEach((id) => (q[id] = 1));
@@ -388,14 +407,15 @@ const PromotionProductForm = ({ onSuccess }) => {
     }
     const remainingSlots = Math.max(
       0,
-      remainingQty - selectedVariantIds.length
+      remainingQty - totalQuantity // Use totalQuantity instead of selectedVariantIds.length
     );
     if (remainingSlots === 0) {
       return toast.info(
-        "Bạn đã đạt số lượng biến thể tối đa cho khuyến mãi này."
+        "Bạn đã đạt số lượng tối đa cho khuyến mãi này."
       );
     }
 
+    // Lấy tối đa remainingQty từ danh sách availableVariants
     const allIds = availableVariants.map((v) => v.value);
     const limitedIds = allIds.slice(0, remainingQty);
     const candidates = availableVariants
@@ -503,6 +523,7 @@ const PromotionProductForm = ({ onSuccess }) => {
                 setSelectedVariantIds([]);
                 setValue("product_variant_id", []);
                 setSelectedPromotion(promo);
+                setVariantQuantities({});
               }}
               placeholder="Chọn khuyến mãi..."
               isClearable
@@ -533,6 +554,14 @@ const PromotionProductForm = ({ onSuccess }) => {
                   Số tiền giảm tối đa:{" "}
                   <strong>{maxDiscountValue.toLocaleString("vi-VN")}₫</strong>
                 </p>
+                <p>
+                  Tổng số lượng đã chọn: <strong>{totalQuantity}</strong> / Tối đa: <strong>{remainingQty}</strong>
+                </p>
+                {totalQuantity > remainingQty && (
+                  <small className="text-danger text-red-600 text-sm">
+                    Tổng số lượng vượt quá số lượt khuyến mãi còn lại ({remainingQty})!
+                  </small>
+                )}
               </div>
             )}
           </div>
@@ -646,13 +675,19 @@ const PromotionProductForm = ({ onSuccess }) => {
                 hoặc không đáp ứng yêu cầu giá tối thiểu.
               </small>
             )}
-            <p className="text-xs text-gray-600 mt-2">
+            <p class scalable="text-xs text-gray-600 mt-2">
               Tìm kiếm bằng SKU hoặc tên sản phẩm để chọn liên tục nhiều biến
               thể. Nhấn vào tùy chọn để thêm hoặc xóa. Các biến thể đã chọn sẽ
               hiển thị bên dưới để nhập số lượng.{" "}
               {selectedPromotionId &&
                 `Số lượng biến thể tối đa: ${remainingQty}`}
             </p>
+            {isSelectedPromoUpcoming && (
+              <small className="text-xs text-blue-600">
+                Lưu ý: Bạn đang chọn khuyến mãi <b>Sắp bắt đầu</b>, nên có thể chọn lại biến thể đã dùng ở khuyến mãi khác. 
+                Hệ thống vẫn kiểm tra tồn kho tổng để tránh vượt quá stock.
+              </small>
+            )}
           </div>
 
           {selectedVariantIds.length > 0 && (
@@ -673,12 +708,16 @@ const PromotionProductForm = ({ onSuccess }) => {
                       </th>
                     </tr>
                   </thead>
+
+
                   <tbody>
                     {selectedVariantIds.map((id, index) => {
                       const variant = productVariants.find(
                         (v) => v.id === parseInt(id)
                       );
                       const stock = variant?.stock || 1;
+                      const currentQty = parseInt(variantQuantities[id]) || 1;
+                      const otherQuantities = totalQuantity - currentQty;
 
                       return (
                         <tr
@@ -701,16 +740,20 @@ const PromotionProductForm = ({ onSuccess }) => {
                             <input
                               type="number"
                               min="1"
-                              max={stock}
+                              max={Math.min(stock, remainingQty - otherQuantities)}
                               value={variantQuantities[id] || 1}
                               onWheel={(e) => e.target.blur()}
                               onKeyDown={(e) => {
-                                const currentVal = variantQuantities[id] || 1;
+                                const currentVal = parseInt(variantQuantities[id]) || 1;
+                                const maxAllowed = Math.min(stock, remainingQty - otherQuantities);
+
                                 if (e.key === "ArrowUp") {
-                                  if (currentVal >= stock) {
+                                  if (currentVal >= maxAllowed) {
                                     e.preventDefault();
                                     toast.warning(
-                                      `Số lượng không được vượt quá tồn kho (${stock})!`
+                                      currentVal >= stock
+                                        ? `Số lượng không được vượt quá tồn kho (${stock})!`
+                                        : `Số lượng không được vượt quá số lượt còn lại (${remainingQty - otherQuantities})!`
                                     );
                                   } else {
                                     setVariantQuantities((prev) => ({
@@ -735,19 +778,23 @@ const PromotionProductForm = ({ onSuccess }) => {
                               }}
                               onChange={(e) => {
                                 const val = parseInt(e.target.value, 10);
+                                const maxAllowed = Math.min(stock, remainingQty - otherQuantities);
+
                                 if (isNaN(val) || val <= 0) {
                                   setVariantQuantities((prev) => ({
                                     ...prev,
                                     [id]: 1,
                                   }));
                                   toast.warning("Số lượng tối thiểu là 1!");
-                                } else if (val > stock) {
+                                } else if (val > maxAllowed) {
                                   setVariantQuantities((prev) => ({
                                     ...prev,
-                                    [id]: stock,
+                                    [id]: maxAllowed,
                                   }));
                                   toast.warning(
-                                    `Số lượng không được vượt quá tồn kho (${stock})!`
+                                    val > stock
+                                      ? `Số lượng không được vượt quá tồn kho (${stock})!`
+                                      : `Số lượng không được vượt quá số lượt còn lại (${remainingQty - otherQuantities})!`
                                   );
                                 } else {
                                   setVariantQuantities((prev) => ({
@@ -771,9 +818,9 @@ const PromotionProductForm = ({ onSuccess }) => {
           <div className="mt-8 flex items-center gap-1">
             <button
               type="submit"
-              disabled={isLoading || remainingQty <= 0}
+              disabled={isLoading || remainingQty <= 0 || totalQuantity > remainingQty}
               className={`bg-[#073272] text-white px-6 py-2 rounded hover:bg-[#052354] transition ${
-                isLoading || remainingQty <= 0
+                isLoading || remainingQty <= 0 || totalQuantity > remainingQty
                   ? "opacity-50 cursor-not-allowed"
                   : ""
               }`}

@@ -27,19 +27,64 @@ export default function ProductCardStyleOne({ datas, type, onProductClick }) {
   const [isLoadingAttributes, setIsLoadingAttributes] = useState(false);
   const navigate = useNavigate();
 
-
-
-
   // Cache theo khóa `${productId}:${variantId}`
-const hydrateCacheRef = useRef(new Map());
-// Theo dõi request đang bay để dedupe/hủy
-const inflightRef = useRef(new Map());
-// Chống spam toast lỗi hydrate
-const lastHydrateErrorAtRef = useRef(0);
+  const hydrateCacheRef = useRef(new Map());
+  // Theo dõi request đang bay để dedupe/hủy
+  const inflightRef = useRef(new Map());
+  // Chống spam toast lỗi hydrate
+  const lastHydrateErrorAtRef = useRef(0);
 
-// sleep util
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  // Ưu tiên lấy % giảm giá từ config backend (promotion)
+  // - Hỗ trợ nhiều field tên khác nhau để an toàn
+  // - Chỉ trả % nếu discount_type là percentage
+  const getConfigDiscountPercent = (v) => {
+    const pm = v?.promotion;
+    if (!pm) return 0;
 
+    const type = String(pm.discount_type || pm.type || "").toLowerCase();
+    if (type === "percentage" || type === "percent") {
+      const raw =
+        pm.discount_percent ??
+        pm.discountPercent ??
+        pm.percentage ??
+        pm.discount_value; // fallback cuối
+      const pct = Number(raw);
+      if (!Number.isFinite(pct)) return 0;
+    return Number(Math.max(0, Math.min(100, pct)).toFixed(2));
+    }
+    return 0;
+  };
+
+const isPercentType = (t) =>
+  String(t || "").toLowerCase() === "percentage" ||
+  String(t || "").toLowerCase() === "percent";
+
+/** Luôn hiển thị % từ backend nếu là percentage; nếu là amount thì hiển thị số tiền giảm */
+const DiscountBadge = ({
+  mode = "badge",
+  original,
+  sale,
+  discountType,
+  discountAmount,
+  percentFromBackend = 0,
+}) => {
+  if (!(Number(original) > 0 && Number(sale) < Number(original))) return null;
+
+  const cls =
+    mode === "badge"
+      ? "absolute top-2 right-2 text-white text-xs font-semibold bg-qred px-2 py-1 rounded z-10 sm:text-sm sm:px-3 sm:py-1.5"
+      : "text-white text-[10px] font-semibold bg-qred px-1 rounded";
+
+  const label = isPercentType(discountType)
+    ? `-${Number(percentFromBackend || 0)}%`              // ✅ chỉ dùng % backend
+    : `-${Number(discountAmount || 0).toLocaleString("vi-VN")}₫`;
+
+  return <span className={cls}>{label}</span>;
+};
+
+  
+  // sleep util
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   const product = useMemo(() => datas || {}, [datas]);
   const representativeVariant = useMemo(() => {
@@ -155,106 +200,118 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     return byName || bySku || byAttrs || "";
   };
 
-const hydrateSelectedVariant = async (productId, variantId) => {
-  if (!productId || !variantId) {
-    // Không toast ở đây để tránh spam
-    return null;
-  }
-
-  const key = `${productId}:${variantId}`;
-  // Cache hit
-  if (hydrateCacheRef.current.has(key)) {
-    return hydrateCacheRef.current.get(key);
-  }
-  // Dedupe: nếu đã có request đang chạy, chờ nó
-  if (inflightRef.current.has(key)) {
-    try {
-      return await inflightRef.current.get(key);
-    } catch {
+  const hydrateSelectedVariant = async (productId, variantId) => {
+    if (!productId || !variantId) {
+      // Không toast ở đây để tránh spam
       return null;
     }
-  }
 
-  // Tạo abort controller để hủy khi variant thay đổi
-  const controller = new AbortController();
-
-  const run = (async () => {
-    const MAX_ATTEMPTS = 3;
-    // Tăng dần timeout: 5s -> 7.5s -> 10s
-    const baseTimeouts = [5000, 7500, 10000];
-
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const key = `${productId}:${variantId}`;
+    // Cache hit
+    if (hydrateCacheRef.current.has(key)) {
+      return hydrateCacheRef.current.get(key);
+    }
+    // Dedupe: nếu đã có request đang chạy, chờ nó
+    if (inflightRef.current.has(key)) {
       try {
-        const token = localStorage.getItem("token");
-        const res = await axios.get(`${Constants.DOMAIN_API}/products/getallnew`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          timeout: baseTimeouts[attempt - 1],
-          signal: controller.signal,
-        });
-
-        const responseProduct = res.data?.data?.find((p) => p.id === productId);
-        const variant = responseProduct?.variants?.find((v) => v.id === variantId);
-
-        if (!responseProduct || !variant) {
-          // Không cache null; kết thúc sớm
-          return null;
-        }
-
-        const fullVariant = {
-          ...variant,
-          attributeValues: Array.isArray(variant.attributeValues)
-            ? variant.attributeValues.map((av) => ({
-                value: av.value || "",
-                attribute: { name: av.attribute?.name || "", ...av.attribute },
-              }))
-            : [],
-          images: Array.isArray(variant.images) ? variant.images : [],
-          price: parseFloat(variant.price) || 0,
-          stock: parseInt(variant.stock) || 0,
-          averageRating: parseFloat(variant.averageRating) || 0,
-          ratingCount: parseInt(variant.ratingCount) || 0,
-          promotion: variant.promotion || null,
-        };
-
-        // Cache kết quả tốt
-        hydrateCacheRef.current.set(key, fullVariant);
-        return fullVariant;
-      } catch (e) {
-        // Nếu bị abort do state đổi, dừng luôn
-        if (axios.isCancel?.(e) || e?.name === "CanceledError") return null;
-
-        const isTimeout =
-          e?.code === "ECONNABORTED" ||
-          e?.message?.toLowerCase?.().includes("timeout");
-
-        // Attempt tiếp theo với backoff
-        if (attempt < MAX_ATTEMPTS && (isTimeout || e?.response?.status >= 500)) {
-          await sleep(250 * attempt); // backoff nhẹ
-          continue;
-        }
-
-        // Chỉ hiển thị toast nếu lần lỗi cuối cùng cách >= 4s để tránh spam
-        const now = Date.now();
-        if (now - lastHydrateErrorAtRef.current > 4000) {
-          lastHydrateErrorAtRef.current = now;
-          // toast.error("Không thể tải thông tin biến thể, sẽ dùng dữ liệu mặc định.");
-        }
-
+        return await inflightRef.current.get(key);
+      } catch {
         return null;
       }
     }
-    return null;
-  })();
 
-  inflightRef.current.set(key, run);
+    // Tạo abort controller để hủy khi variant thay đổi
+    const controller = new AbortController();
 
-  const result = await run.finally(() => {
-    inflightRef.current.delete(key);
-  });
+    const run = (async () => {
+      const MAX_ATTEMPTS = 3;
+      // Tăng dần timeout: 5s -> 7.5s -> 10s
+      const baseTimeouts = [5000, 7500, 10000];
 
-  return result;
-};
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+          const token = localStorage.getItem("token");
+          const res = await axios.get(
+            `${Constants.DOMAIN_API}/products/getallnew`,
+            {
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+              timeout: baseTimeouts[attempt - 1],
+              signal: controller.signal,
+            }
+          );
 
+          const responseProduct = res.data?.data?.find(
+            (p) => p.id === productId
+          );
+          const variant = responseProduct?.variants?.find(
+            (v) => v.id === variantId
+          );
+
+          if (!responseProduct || !variant) {
+            // Không cache null; kết thúc sớm
+            return null;
+          }
+
+          const fullVariant = {
+            ...variant,
+            attributeValues: Array.isArray(variant.attributeValues)
+              ? variant.attributeValues.map((av) => ({
+                  value: av.value || "",
+                  attribute: {
+                    name: av.attribute?.name || "",
+                    ...av.attribute,
+                  },
+                }))
+              : [],
+            images: Array.isArray(variant.images) ? variant.images : [],
+            price: parseFloat(variant.price) || 0,
+            stock: parseInt(variant.stock) || 0,
+            averageRating: parseFloat(variant.averageRating) || 0,
+            ratingCount: parseInt(variant.ratingCount) || 0,
+            promotion: variant.promotion || null,
+          };
+
+          // Cache kết quả tốt
+          hydrateCacheRef.current.set(key, fullVariant);
+          return fullVariant;
+        } catch (e) {
+          // Nếu bị abort do state đổi, dừng luôn
+          if (axios.isCancel?.(e) || e?.name === "CanceledError") return null;
+
+          const isTimeout =
+            e?.code === "ECONNABORTED" ||
+            e?.message?.toLowerCase?.().includes("timeout");
+
+          // Attempt tiếp theo với backoff
+          if (
+            attempt < MAX_ATTEMPTS &&
+            (isTimeout || e?.response?.status >= 500)
+          ) {
+            await sleep(250 * attempt); // backoff nhẹ
+            continue;
+          }
+
+          // Chỉ hiển thị toast nếu lần lỗi cuối cùng cách >= 4s để tránh spam
+          const now = Date.now();
+          if (now - lastHydrateErrorAtRef.current > 4000) {
+            lastHydrateErrorAtRef.current = now;
+            // toast.error("Không thể tải thông tin biến thể, sẽ dùng dữ liệu mặc định.");
+          }
+
+          return null;
+        }
+      }
+      return null;
+    })();
+
+    inflightRef.current.set(key, run);
+
+    const result = await run.finally(() => {
+      inflightRef.current.delete(key);
+    });
+
+    return result;
+  };
 
   useEffect(() => {
     if (variantImages.length > 0) {
@@ -318,9 +375,9 @@ const hydrateSelectedVariant = async (productId, variantId) => {
 
   useEffect(() => {
     if (selectedVariant) {
-    const { avg, cnt } = resolveRatings(selectedVariant, product);
-setAvgRating(avg);
-setRatingCount(cnt);
+      const { avg, cnt } = resolveRatings(selectedVariant, product);
+      setAvgRating(avg);
+      setRatingCount(cnt);
 
       setVariantImages(selectedVariant.images || []);
       setSelectedImage(
@@ -422,41 +479,43 @@ setRatingCount(cnt);
       original,
       sale,
       discountAmount,
-      discountPercent,
       discountType,
+      discountPercent: pm && (discountType === "percentage" || discountType === "percent")
+        ? getConfigDiscountPercent(variant) // Use configured percentage for percentage-based promotions
+        : discountPercent, // Fallback to calculated percentage
     };
   };
 
-  const betterDeal = (a, b) => {
+ const betterDeal = (a, b) => {
   if (!a) return b;
   if (!b) return a;
   const pa = computePricing(a);
   const pb = computePricing(b);
-  if (pa.discountPercent !== pb.discountPercent) {
-    return pa.discountPercent > pb.discountPercent ? a : b;
-  }
+
+  // Ưu tiên giá sau giảm thấp hơn
+  if (pa.sale !== pb.sale) return pa.sale < pb.sale ? a : b;
+
+  // Tie-break: tiền giảm nhiều hơn
   if (pa.discountAmount !== pb.discountAmount) {
     return pa.discountAmount > pb.discountAmount ? a : b;
   }
-  if (pa.sale !== pb.sale) {
-    return pa.sale < pb.sale ? a : b;
-  }
+
+  // Tie-break: tồn nhiều hơn
   const aStock = parseInt(a.stock) || 0;
   const bStock = parseInt(b.stock) || 0;
   return aStock >= bStock ? a : b;
 };
 
-const bestDealVariant = useMemo(() => {
-  if (validVariants.length === 0) return null;
-  return validVariants.reduce((best, v) => betterDeal(best, v), null);
-}, [validVariants]);
+  const bestDealVariant = useMemo(() => {
+    if (validVariants.length === 0) return null;
+    return validVariants.reduce((best, v) => betterDeal(best, v), null);
+  }, [validVariants]);
 
-const hasAutoPickedRef = useRef(false);
-useEffect(() => {
-  // Reset khóa khi đổi product
-  hasAutoPickedRef.current = false;
-}, [product?.id]);
-
+  const hasAutoPickedRef = useRef(false);
+  useEffect(() => {
+    // Reset khóa khi đổi product
+    hasAutoPickedRef.current = false;
+  }, [product?.id]);
 
   const priceInfo = useMemo(() => {
     const baseVariant = selectedVariant || representativeVariant || {};
@@ -488,61 +547,82 @@ useEffect(() => {
     [selectedVariant, validVariants, visibleVariants]
   );
 
-useEffect(() => {
-  if (!product.id) return;
+ const currentForBadge = useMemo(
+  () =>
+    selectedVariant ||
+    bestDealVariant ||
+    validVariants[0] ||
+    visibleVariants[0] ||
+    representativeVariant ||
+    null,
+  [selectedVariant, bestDealVariant, validVariants, visibleVariants, representativeVariant]
+);
 
-  if (visibleVariants.length === 0) {
-    setSelectedVariant(null);
-    setVariantImages([]);
-    setSelectedImage(product.thumbnail || "/images/no-image.jpg");
-    const { avg, cnt } = resolveRatings(null, product);
-    setAvgRating(avg);
-    setRatingCount(cnt);
-    return;
-  }
+// Lấy % đúng theo config cho biến thể này
+const cardConfigPercent = useMemo(
+  () => getConfigDiscountPercent(currentForBadge),
+  [currentForBadge]
+);
 
-  // Ảnh cover nhẹ
-  const coverImages = bestDealVariant?.images || visibleVariants[0]?.images || [];
-  setVariantImages(coverImages);
-  setSelectedImage(
-    product.thumbnail ||
-      coverImages?.[0]?.image_url ||
-      "/images/no-image.jpg"
-  );
 
-  // Chỉ auto-pick 1 lần cho mỗi product
-  if (!selectedVariant && !hasAutoPickedRef.current) {
-    hasAutoPickedRef.current = true;
-    const toPick = bestDealVariant || validVariants[0] || visibleVariants[0];
-    setSelectedVariant(toPick);
-    const { avg, cnt } = resolveRatings(toPick, product);
-    setAvgRating(avg);
-    setRatingCount(cnt);
-    if (toPick?.id) checkWishlistStatus(toPick.id);
-  }
-}, [product, visibleVariants, validVariants, bestDealVariant, selectedVariant]);
+  useEffect(() => {
+    if (!product.id) return;
 
+    if (visibleVariants.length === 0) {
+      setSelectedVariant(null);
+      setVariantImages([]);
+      setSelectedImage(product.thumbnail || "/images/no-image.jpg");
+      const { avg, cnt } = resolveRatings(null, product);
+      setAvgRating(avg);
+      setRatingCount(cnt);
+      return;
+    }
+
+    // Ảnh cover nhẹ
+    const coverImages =
+      bestDealVariant?.images || visibleVariants[0]?.images || [];
+    setVariantImages(coverImages);
+    setSelectedImage(
+      product.thumbnail || coverImages?.[0]?.image_url || "/images/no-image.jpg"
+    );
+
+    // Chỉ auto-pick 1 lần cho mỗi product
+    if (!selectedVariant && !hasAutoPickedRef.current) {
+      hasAutoPickedRef.current = true;
+      const toPick = bestDealVariant || validVariants[0] || visibleVariants[0];
+      setSelectedVariant(toPick);
+      const { avg, cnt } = resolveRatings(toPick, product);
+      setAvgRating(avg);
+      setRatingCount(cnt);
+      if (toPick?.id) checkWishlistStatus(toPick.id);
+    }
+  }, [
+    product,
+    visibleVariants,
+    validVariants,
+    bestDealVariant,
+    selectedVariant,
+  ]);
 
   const shortenText = (text, maxLength) => {
     if (!text) return "";
     return text.length > maxLength ? text.slice(0, maxLength) + "..." : text;
   };
 
-  
+  const thumbnail =
+    selectedImage || product.thumbnail?.trim() || "/images/no-image.jpg";
 
-const thumbnail =
-  selectedImage || product.thumbnail?.trim() || "/images/no-image.jpg";
+  const productName =
+    product.name?.trim() || product.title?.trim() || "Sản phẩm không tên";
 
-const productName =
-  product.name?.trim() || product.title?.trim() || "Sản phẩm không tên";
+  const variantLabel = useMemo(
+    () => getVariantLabel(selectedVariant),
+    [selectedVariant]
+  );
 
-const variantLabel = useMemo(() => getVariantLabel(selectedVariant), [selectedVariant]);
-
-const displayName = variantLabel
-  ? `${shortenText(productName, 20)} - ${variantLabel}`
-  : productName;
-
-
+  const displayName = variantLabel
+    ? `${shortenText(productName, 20)} - ${variantLabel}`
+    : productName;
 
   const maxStock = 5;
   const stockPercentage =
@@ -854,13 +934,7 @@ const displayName = variantLabel
                 </>
               )}
             </div>
-            {displayOriginalPrice > displayPrice && (
-              <span className="absolute top-2 right-2 text-white text-xs font-semibold bg-qred px-2 py-1 rounded z-10">
-                {discountType === "percentage" || discountType === "percent"
-                  ? `-${discountPercent}%`
-                  : `-${Number(discountAmount).toLocaleString("vi-VN")}₫`}
-              </span>
-            )}
+          
             <div className="grid grid-cols-4 gap-1.5 mt-5 max-h-28 overflow-y-auto">
               {variantImages.map((img) => (
                 <div
@@ -902,8 +976,8 @@ const displayName = variantLabel
                       original,
                       sale,
                       discountAmount,
-                      discountPercent,
                       discountType,
+                      discountPercent,
                     } = computePricing(variant);
                     const inStock = variant.stock > 0;
                     const inAuction = variant.isInAuction;
@@ -936,19 +1010,22 @@ const displayName = variantLabel
                         <p className="text-qred font-semibold">
                           {sale.toLocaleString("vi-VN")}₫
                         </p>
-                        {sale < original && (
-                          <div className="flex items-center justify-center space-x-1">
-                            <p className="text-qgray line-through text-[10px]">
-                              {original.toLocaleString("vi-VN")}₫
-                            </p>
-                            <span className="text-white text-[10px] font-semibold bg-qred px-1 rounded">
-                              {discountType === "percentage" ||
-                              discountType === "percent"
-                                ? `-${discountPercent}%`
-                                : `-${discountAmount.toLocaleString("vi-VN")}₫`}
-                            </span>
-                          </div>
-                        )}
+          {sale < original && (
+  <div className="flex items-center justify-center space-x-1">
+    <p className="text-qgray line-through text-[10px]">
+      {original.toLocaleString("vi-VN")}₫
+    </p>
+    <DiscountBadge
+      mode="inline"
+      original={original}
+      sale={sale}
+      discountType={discountType}
+      discountAmount={discountAmount}
+      percentFromBackend={getConfigDiscountPercent(variant)} // chỉ % backend
+    />
+  </div>
+)}
+
                         <p className="text-[10px] font-medium">
                           {inAuction
                             ? "Sản phẩm đang trong phiên đấu giá"
@@ -1161,11 +1238,9 @@ const displayName = variantLabel
             className="max-w-full max-h-full object-contain"
           />
         </div>
-        {discountPercent > 0 && displayOriginalPrice > displayPrice && (
+        {cardConfigPercent > 0 && (
           <span className="absolute top-2 right-2 text-white text-xs font-semibold bg-qred px-2 py-1 rounded z-10 sm:text-sm sm:px-3 sm:py-1.5">
-            {discountType === "percentage" || discountType === "percent"
-              ? `-${Number(discountPercent).toString()}%`
-              : `-${Number(discountAmount).toLocaleString("vi-VN")}₫`}
+            {cardConfigPercent}% {/* Ensure percentage matches backend */}
           </span>
         )}
       </div>
@@ -1226,7 +1301,7 @@ const displayName = variantLabel
                   })}
                 </span>
                 {displayOriginalPrice > displayPrice && (
-                  <span className="text-qgray line-through font-600 text-[16px]">
+                  <span className="text-qgray line-through text-[16px]">
                     {Number(displayOriginalPrice).toLocaleString("vi-VN", {
                       style: "currency",
                       currency: "VND",
@@ -1267,75 +1342,53 @@ const displayName = variantLabel
             />
           </span>
         </a>
-<a
-  href="#"
-  onClick={async (e) => {
-    e.preventDefault();
-
-    try {
-      
-      const res = await fetch("https://web-dong-ho-be.onrender.com/products/compare");
-      const data = await res.json();
-      const allVariants = [];
-
-      data.data.forEach((p) => {
-        p.variants.forEach((variant) => {
-          if (!variant.isAuction) {
-            allVariants.push({
-              productId: p.id,
-              productName: p.name,
-              productDescription: p.description,
-              productThumbnail: p.thumbnail,
-              brand: p.brand?.name || "-",
-              averageRating: p.average_rating || 0,
-              ratingCount: p.rating_count || 0,
+        <a
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            const allVariants = variants.map((variant) => ({
+              productId: product.id,
+              productName: product.name,
+              productDescription: product.description,
+              productThumbnail: product.thumbnail,
+              brand: product.brand?.name || "-",
+              averageRating: product.averageRating,
+              ratingCount: product.ratingCount,
               variantId: variant.id,
               price: variant.price,
               stock: variant.stock,
               sku: variant.sku,
-              images: variant.images || [],
-              attributeValues: variant.attributeValues || [],
-            });
-          }
-        });
-      });
-
-      // tìm biến thể người dùng đang chọn
-      const clickedVariant = allVariants.find(
-        (v) =>
-          v.productId === product.id &&
-          v.variantId === (selectedVariant?.id || variants?.[0]?.id)
-      );
-
-      if (!clickedVariant) {
-        toast.error("Sản phẩm không có biến thể hợp lệ để so sánh.");
-        return;
-      }
-
-      const current = JSON.parse(localStorage.getItem("compareList")) || [];
-      const exists = current.find(
-        (item) => item.variantId === clickedVariant.variantId
-      );
-
-      if (!exists) {
-        const updated = [...current, clickedVariant].slice(0, 4);
-        localStorage.setItem("compareList", JSON.stringify(updated));
-        toast.success("Đã thêm sản phẩm vào so sánh!");
-      } else {
-        toast.info("Sản phẩm đã có trong danh sách so sánh!");
-      }
-
-      navigate("/products-compaire");
-    } catch (error) {
-      console.error(error);
-      toast.error("Không thể tải dữ liệu sản phẩm để so sánh");
-    }
-  }}
->
-  <span className="w-10 h-10 flex justify-center items-center bg-primarygray rounded">
-    <Compair className="w-5 h-5" />
-  </span>
-</a>
+              images: variant.images,
+              attributeValues: variant.attributeValues,
+            }));
+            const clickedVariant = allVariants.find(
+              (v) =>
+                v.productId === product.id &&
+                v.variantId === (selectedVariant?.id || variants?.[0]?.id)
+            );
+            if (!clickedVariant) {
+              toast.error("Sản phẩm không có biến thể hợp lệ để so sánh.");
+              return;
+            }
+            const current =
+              JSON.parse(localStorage.getItem("compareList")) || [];
+            const exists = current.find(
+              (item) => item.variantId === clickedVariant.variantId
+            );
+            if (!exists) {
+              const updated = [...current, clickedVariant].slice(0, 4);
+              localStorage.setItem("compareList", JSON.stringify(updated));
+              toast.success("Đã thêm sản phẩm vào so sánh!");
+            } else {
+              toast.info("Sản phẩm đã có trong danh sách so sánh!");
+            }
+            navigate("/products-compaire");
+          }}
+        >
+          <span className="w-10 h-10 flex justify-center items-center bg-primarygray rounded">
+            <Compair className="w-5 h-5" />
+          </span>
+        </a>
       </div>
       <QuickViewDialog />
     </div>

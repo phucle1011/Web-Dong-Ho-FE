@@ -4,10 +4,18 @@ import { toast } from "react-toastify";
 import Constants from "../../../../Constants.jsx";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
-import { FaAngleDoubleLeft, FaAngleDoubleRight, FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
-import Swal from 'sweetalert2';
+import {
+  FaAngleDoubleLeft,
+  FaAngleDoubleRight,
+  FaChevronLeft,
+  FaChevronRight,
+  FaTimes,
+} from "react-icons/fa";
+import Swal from "sweetalert2";
 import Select from "react-select";
-import { FaUserPlus } from 'react-icons/fa';
+import { FaUserPlus } from "react-icons/fa";
+import { uploadToCloudinary } from "../../../../Upload/uploadToCloudinary.js";
+import { Editor } from "@tinymce/tinymce-react";
 
 function PromotionList() {
   const [userPage, setUserPage] = useState(1);
@@ -73,10 +81,16 @@ function PromotionList() {
 
   const openAddUserModal = async (promotionId) => {
     try {
-      const res = await axios.get(`${Constants.DOMAIN_API}/admin/users/not-in-promotion`, {
-        params: { promotionId },
-      });
-      const userList = res.data.data.map((u) => ({ value: u.id, label: `${u.name} (${u.email})` }));
+      const res = await axios.get(
+        `${Constants.DOMAIN_API}/admin/users/not-in-promotion`,
+        {
+          params: { promotionId },
+        }
+      );
+      const userList = res.data.data.map((u) => ({
+        value: u.id,
+        label: `${u.name} (${u.email})`,
+      }));
       setUsersNotInPromo(userList);
       setSelectedPromoForAddUser(promotionId);
       setSelectedUsersToAdd([]);
@@ -90,12 +104,19 @@ function PromotionList() {
     if (!selectedPromoForAddUser || selectedUsersToAdd.length === 0) return;
     try {
       const userIds = selectedUsersToAdd.map((u) => u.value);
-      const res = await axios.post(`${Constants.DOMAIN_API}/admin/promotionusers/add`, {
-        promotionId: selectedPromoForAddUser,
-        userIds,
-      });
+      const res = await axios.post(
+        `${Constants.DOMAIN_API}/admin/promotionusers/add`,
+        {
+          promotionId: selectedPromoForAddUser,
+          userIds,
+        }
+      );
 
-      toast.success(`Đã thêm ${res.data.addedCount || userIds.length} người dùng vào mã giảm!`);
+      toast.success(
+        `Đã thêm ${
+          res.data.addedCount || userIds.length
+        } người dùng vào mã giảm!`
+      );
       setIsAddUserModalOpen(false);
       setSelectedUsersToAdd([]);
       // Luôn làm mới danh sách khách hàng
@@ -108,11 +129,14 @@ function PromotionList() {
   const fetchPromotions = async () => {
     setLoadingPromotions(true);
     try {
-      const res = await axios.get(`${Constants.DOMAIN_API}/admin/promotions/list`);
+      const res = await axios.get(
+        `${Constants.DOMAIN_API}/admin/promotions/list`
+      );
       const data = res.data.data || [];
       const specialPromotions = data.filter((promo) => promo.special_promotion);
       setPromotions(specialPromotions);
-      if (specialPromotions.length > 0) setSelectedPromotionId(specialPromotions[0].id);
+      if (specialPromotions.length > 0)
+        setSelectedPromotionId(specialPromotions[0].id);
     } catch (err) {
       toast.error("Không thể tải danh sách mã giảm.");
     } finally {
@@ -129,9 +153,12 @@ function PromotionList() {
       let totalPages = 1;
 
       while (page <= totalPages) {
-        const res = await axios.get(`${Constants.DOMAIN_API}/admin/promotionusers/list`, {
-          params: { promotionId, page, limit: 50 },
-        });
+        const res = await axios.get(
+          `${Constants.DOMAIN_API}/admin/promotionusers/list`,
+          {
+            params: { promotionId, page, limit: 50 },
+          }
+        );
         if (myId !== reqIdRef.current) return;
         allCustomers = [...allCustomers, ...res.data.data];
         totalPages = res.data.pagination.totalPages;
@@ -139,7 +166,7 @@ function PromotionList() {
         page += 1;
       }
       setCustomers(allCustomers);
-      console.log('Total customers fetched:', allCustomers.length);
+      console.log("Total customers fetched:", allCustomers.length);
     } catch {
       toast.error("Không thể tải danh sách khách hàng.");
       setCustomers([]);
@@ -150,17 +177,29 @@ function PromotionList() {
   };
 
   const filteredPromotions = useMemo(() => {
-    const sortOrder = { active: 1, upcoming: 2, inactive: 3, exhausted: 4, expired: 5 };
+    const sortOrder = {
+      active: 1,
+      upcoming: 2,
+      inactive: 3,
+      exhausted: 4,
+      expired: 5,
+    };
     return promotions
       .filter(
         (promo) =>
-          promo.name?.toLowerCase().includes(promotionSearchTerm.toLowerCase()) ||
+          promo.name
+            ?.toLowerCase()
+            .includes(promotionSearchTerm.toLowerCase()) ||
           promo.code?.toLowerCase().includes(promotionSearchTerm.toLowerCase())
       )
-      .sort((a, b) => (sortOrder[a.status] ?? 99) - (sortOrder[b.status] ?? 99));
+      .sort(
+        (a, b) => (sortOrder[a.status] ?? 99) - (sortOrder[b.status] ?? 99)
+      );
   }, [promotions, promotionSearchTerm]);
 
-  const totalPromotionPages = Math.ceil(filteredPromotions.length / PROMOTIONS_PER_PAGE);
+  const totalPromotionPages = Math.ceil(
+    filteredPromotions.length / PROMOTIONS_PER_PAGE
+  );
   const paginatedPromotions = useMemo(() => {
     const start = (promotionPage - 1) * PROMOTIONS_PER_PAGE;
     return filteredPromotions.slice(start, start + PROMOTIONS_PER_PAGE);
@@ -175,7 +214,10 @@ function PromotionList() {
   }, [customers, searchTerm]);
 
   useEffect(() => {
-    const tp = Math.max(1, Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE));
+    const tp = Math.max(
+      1,
+      Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE)
+    );
     if (currentPage > tp) setCurrentPage(tp);
   }, [filteredCustomers.length]);
 
@@ -186,7 +228,10 @@ function PromotionList() {
   }, [filteredCustomers, currentPage]);
 
   useEffect(() => {
-    const tpp = Math.max(1, Math.ceil(filteredPromotions.length / PROMOTIONS_PER_PAGE));
+    const tpp = Math.max(
+      1,
+      Math.ceil(filteredPromotions.length / PROMOTIONS_PER_PAGE)
+    );
     if (promotionPage > tpp) setPromotionPage(tpp);
   }, [filteredPromotions.length]);
 
@@ -198,12 +243,22 @@ function PromotionList() {
 
   const handleSelectAll = (e) => {
     const idsOnPage = paginatedCustomers
-      .filter((c) => !c.promotions.some((p) => p.promotionId === selectedPromotionId && p.used && p.isSpecialPromotion))
+      .filter(
+        (c) =>
+          !c.promotions.some(
+            (p) =>
+              p.promotionId === selectedPromotionId &&
+              p.used &&
+              p.isSpecialPromotion
+          )
+      )
       .map((c) => c.id);
     if (e.target.checked) {
       setSelectedCustomerIds((prev) => [...new Set([...prev, ...idsOnPage])]);
     } else {
-      setSelectedCustomerIds((prev) => prev.filter((id) => !idsOnPage.includes(id)));
+      setSelectedCustomerIds((prev) =>
+        prev.filter((id) => !idsOnPage.includes(id))
+      );
     }
   };
 
@@ -215,7 +270,7 @@ function PromotionList() {
     }
     if (files.length > 0) {
       files.forEach((file) => {
-        if (!file.type.startsWith('image/')) {
+        if (!file.type.startsWith("image/")) {
           toast.error(`File ${file.name} không phải hình ảnh.`);
           return;
         }
@@ -236,7 +291,10 @@ function PromotionList() {
   const handleRemoveImage = (index) => {
     setImages((prev) => prev.filter((_, i) => i !== index));
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
-    if (currentImageIndex >= imagePreviews.length - 1 && currentImageIndex > 0) {
+    if (
+      currentImageIndex >= imagePreviews.length - 1 &&
+      currentImageIndex > 0
+    ) {
       setCurrentImageIndex(currentImageIndex - 1);
     }
   };
@@ -246,7 +304,9 @@ function PromotionList() {
   };
 
   const handleNextImage = () => {
-    setCurrentImageIndex((prev) => Math.min(prev + 1, imagePreviews.length - 1));
+    setCurrentImageIndex((prev) =>
+      Math.min(prev + 1, imagePreviews.length - 1)
+    );
   };
 
   const handleSendEmails = async (useDefault = false) => {
@@ -267,7 +327,10 @@ function PromotionList() {
       return;
     }
 
-    if (selectedPromotion.status === 'expired' || selectedPromotion.status === 'inactive') {
+    if (
+      selectedPromotion.status === "expired" ||
+      selectedPromotion.status === "inactive"
+    ) {
       toast.error("Không thể gửi email vì mã giảm giá không hoạt động.");
       return;
     }
@@ -287,13 +350,13 @@ function PromotionList() {
         prev.map((c) =>
           selectedCustomerIds.includes(c.id)
             ? {
-              ...c,
-              promotions: c.promotions.map((p) =>
-                p.promotionId === selectedPromotionId
-                  ? { ...p, emailSent: true }
-                  : p
-              ),
-            }
+                ...c,
+                promotions: c.promotions.map((p) =>
+                  p.promotionId === selectedPromotionId
+                    ? { ...p, emailSent: true }
+                    : p
+                ),
+              }
             : c
         )
       );
@@ -316,24 +379,31 @@ function PromotionList() {
     const customer = customers.find((c) => c.id === customerId);
     if (!customer) return;
 
-    if (selectedPromotion.status === 'expired' || selectedPromotion.status === 'inactive') {
+    if (
+      selectedPromotion.status === "expired" ||
+      selectedPromotion.status === "inactive"
+    ) {
       toast.error("Không thể gửi email vì mã giảm giá không hoạt động.");
       return;
     }
 
-    const promotionStatus = customer.promotions.find((p) => p.promotionId === selectedPromotionId);
+    const promotionStatus = customer.promotions.find(
+      (p) => p.promotionId === selectedPromotionId
+    );
     if (promotionStatus?.used) {
-      toast.error("Không thể gửi email vì khách hàng đã sử dụng mã giảm giá này.");
+      toast.error(
+        "Không thể gửi email vì khách hàng đã sử dụng mã giảm giá này."
+      );
       return;
     }
 
     const result = await Swal.fire({
-      title: 'Xác nhận gửi mail',
+      title: "Xác nhận gửi mail",
       text: `Gửi mail khuyến mãi tới ${customer.name} (${customer.email})?`,
-      icon: 'question',
+      icon: "question",
       showCancelButton: true,
-      confirmButtonText: 'Gửi',
-      cancelButtonText: 'Hủy',
+      confirmButtonText: "Gửi",
+      cancelButtonText: "Hủy",
     });
 
     if (!result.isConfirmed) return;
@@ -351,13 +421,13 @@ function PromotionList() {
         prev.map((c) =>
           c.id === customerId
             ? {
-              ...c,
-              promotions: c.promotions.map((p) =>
-                p.promotionId === selectedPromotionId
-                  ? { ...p, emailSent: true }
-                  : p
-              ),
-            }
+                ...c,
+                promotions: c.promotions.map((p) =>
+                  p.promotionId === selectedPromotionId
+                    ? { ...p, emailSent: true }
+                    : p
+                ),
+              }
             : c
         )
       );
@@ -368,7 +438,9 @@ function PromotionList() {
     }
   };
 
-  const selectedPromotion = promotions.find((p) => p.id === selectedPromotionId);
+  const selectedPromotion = promotions.find(
+    (p) => p.id === selectedPromotionId
+  );
   const promotionTitle = selectedPromotion
     ? `cho mã giảm (${selectedPromotion.name || "Mã không tên"})`
     : "";
@@ -400,14 +472,16 @@ function PromotionList() {
   const quillModules = {
     toolbar: [
       [{ header: [1, 2, false] }],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{ list: 'ordered' }, { list: 'bullet' }],
-      ['link', 'image'],
+      ["bold", "italic", "underline", "strike"],
+      [{ list: "ordered" }, { list: "bullet" }],
+      ["link", "image"],
       [{ align: [] }],
-      ['clean'],
+      ["clean"],
     ],
   };
-
+  const disabledEditor =
+    selectedPromotion?.status === "expired" ||
+    selectedPromotion?.status === "inactive";
   return (
     <div className="container mx-auto p-6 bg-white shadow rounded-lg flex gap-8 min-h-[600px]">
       <div className="w-1/3 border rounded-lg shadow-sm p-4 flex flex-col">
@@ -427,15 +501,27 @@ function PromotionList() {
             onClick={handlePromotionSearch}
             className="bg-blue-900 hover:bg-blue-800 text-white px-4 py-1.5 rounded"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1010.5 3a7.5 7.5 0 006.15 13.65z" />
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1010.5 3a7.5 7.5 0 006.15 13.65z"
+              />
             </svg>
           </button>
         </div>
         {loadingPromotions ? (
           <div className="text-center text-gray-500 mt-10">Đang tải...</div>
         ) : filteredPromotions.length === 0 ? (
-          <div className="text-center text-gray-400 mt-10">Không có mã giảm đặc biệt.</div>
+          <div className="text-center text-gray-400 mt-10">
+            Không có mã giảm đặc biệt.
+          </div>
         ) : (
           <>
             <ul className="overflow-auto max-h-[460px] custom-scrollbar pr-2">
@@ -443,30 +529,40 @@ function PromotionList() {
                 <li
                   key={promo.id}
                   onClick={() => setSelectedPromotionId(promo.id)}
-                  className={`cursor-pointer p-3 mb-2 rounded-lg transition-colors ${selectedPromotionId === promo.id ? 'bg-blue-100 shadow' : 'hover:bg-blue-50'
-                    } ${promo.status === 'expired' || promo.status === 'inactive' ? 'opacity-60' : ''}`}
+                  className={`cursor-pointer p-3 mb-2 rounded-lg transition-colors ${
+                    selectedPromotionId === promo.id
+                      ? "bg-blue-100 shadow"
+                      : "hover:bg-blue-50"
+                  } ${
+                    promo.status === "expired" || promo.status === "inactive"
+                      ? "opacity-60"
+                      : ""
+                  }`}
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="font-semibold text-base text-blue-900">{promo.name || 'Mã không tên'}</div>
+                      <div className="font-semibold text-base text-blue-900">
+                        {promo.name || "Mã không tên"}
+                      </div>
                       <div className="text-sm text-gray-600">
                         {promo.discount_value !== undefined
-                          ? promo.discount_type === 'percentage'
+                          ? promo.discount_type === "percentage"
                             ? `Giảm ${promo.discount_value}%`
                             : `Giảm ${promo.discount_value.toLocaleString()}đ`
-                          : 'Chưa xác định'}
+                          : "Chưa xác định"}
                         <div className="text-xs text-gray-500">
-                          Trạng thái:{' '}
-                          {promo.status === 'active'
-                            ? 'đang diễn ra'
-                            : promo.status === 'expired'
-                              ? 'hết hạn'
-                              : promo.status === 'inactive'
-                                ? 'không hoạt động'
-                                : promo.status}
+                          Trạng thái:{" "}
+                          {promo.status === "active"
+                            ? "đang diễn ra"
+                            : promo.status === "expired"
+                            ? "hết hạn"
+                            : promo.status === "inactive"
+                            ? "không hoạt động"
+                            : promo.status}
                           {promo.code && (
                             <div className="text-xs text-blue-600">
-                              Mã: <span className="font-medium">{promo.code}</span>
+                              Mã:{" "}
+                              <span className="font-medium">{promo.code}</span>
                             </div>
                           )}
                         </div>
@@ -479,7 +575,7 @@ function PromotionList() {
                           e.stopPropagation();
                           openAddUserModal(promo.id);
                         }}
-                        disabled={promo.status !== 'active'}
+                        disabled={promo.status !== "active"}
                         title="Thêm người dùng"
                       >
                         <FaUserPlus className="inline-block text-base" />
@@ -512,8 +608,11 @@ function PromotionList() {
                       <button
                         key={page}
                         onClick={() => setPromotionPage(page)}
-                        className={`px-3 py-1 border rounded-md text-sm ${page === promotionPage ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'
-                          }`}
+                        className={`px-3 py-1 border rounded-md text-sm ${
+                          page === promotionPage
+                            ? "bg-blue-600 text-white"
+                            : "bg-white text-gray-600 hover:bg-gray-100"
+                        }`}
                       >
                         {page}
                       </button>
@@ -543,7 +642,6 @@ function PromotionList() {
 
       <div className="w-2/3 flex flex-col">
         <div className="flex justify-between items-start mb-4 flex-wrap sm:flex-nowrap gap-2">
-
           <div className="flex-1 min-w-0">
             <h3 className="text-xl font-semibold text-gray-800 break-words">
               Danh sách khách hàng {promotionTitle}
@@ -552,33 +650,35 @@ function PromotionList() {
 
           <div className="flex gap-2 flex-shrink-0">
             <button
-              className={`bg-blue-600 text-white px-3 py-2 rounded-md font-semibold transition-opacity ${selectedCustomerIds.length === 0 ||
-                selectedPromotion?.status === 'expired' ||
-                selectedPromotion?.status === 'inactive'
-                ? 'opacity-50 cursor-not-allowed'
-                : 'hover:bg-blue-700'
-                }`}
+              className={`bg-blue-600 text-white px-3 py-2 rounded-md font-semibold transition-opacity ${
+                selectedCustomerIds.length === 0 ||
+                selectedPromotion?.status === "expired" ||
+                selectedPromotion?.status === "inactive"
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-blue-700"
+              }`}
               onClick={() => handleSendEmails(true)}
               disabled={
                 selectedCustomerIds.length === 0 ||
-                selectedPromotion?.status === 'expired' ||
-                selectedPromotion?.status === 'inactive'
+                selectedPromotion?.status === "expired" ||
+                selectedPromotion?.status === "inactive"
               }
             >
               Gửi Email ({selectedCustomerIds.length})
             </button>
             <button
-              className={`bg-green-600 text-white px-3 py-2 rounded-md font-semibold transition-opacity ${selectedCustomerIds.length === 0 ||
-                selectedPromotion?.status === 'expired' ||
-                selectedPromotion?.status === 'inactive'
-                ? 'opacity-50 cursor-not-allowed'
-                : 'hover:bg-green-700'
-                }`}
+              className={`bg-green-600 text-white px-3 py-2 rounded-md font-semibold transition-opacity ${
+                selectedCustomerIds.length === 0 ||
+                selectedPromotion?.status === "expired" ||
+                selectedPromotion?.status === "inactive"
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-green-700"
+              }`}
               onClick={() => setIsEmailModalOpen(true)}
               disabled={
                 selectedCustomerIds.length === 0 ||
-                selectedPromotion?.status === 'expired' ||
-                selectedPromotion?.status === 'inactive'
+                selectedPromotion?.status === "expired" ||
+                selectedPromotion?.status === "inactive"
               }
             >
               Soạn Email ({selectedCustomerIds.length})
@@ -595,16 +695,31 @@ function PromotionList() {
             className="flex-grow border border-gray-300 rounded py-2 px-4 text-gray-700 leading-tight focus:ring-2 focus:ring-blue-500"
             placeholder="Tìm kiếm theo tên hoặc email..."
           />
-          <button onClick={handleSearch} className="bg-blue-900 hover:bg-blue-800 text-white px-4 py-1.5 rounded">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1010.5 3a7.5 7.5 0 006.15 13.65z" />
+          <button
+            onClick={handleSearch}
+            className="bg-blue-900 hover:bg-blue-800 text-white px-4 py-1.5 rounded"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1010.5 3a7.5 7.5 0 006.15 13.65z"
+              />
             </svg>
           </button>
         </div>
         {loadingCustomers ? (
           <div className="text-center text-gray-500 mt-10">Đang tải...</div>
         ) : filteredCustomers.length === 0 ? (
-          <div className="text-center text-gray-400 mt-16">Không tìm thấy khách hàng.</div>
+          <div className="text-center text-gray-400 mt-16">
+            Không tìm thấy khách hàng.
+          </div>
         ) : (
           <>
             <div className="overflow-auto border rounded-lg shadow-sm">
@@ -615,56 +730,107 @@ function PromotionList() {
                       <input
                         type="checkbox"
                         checked={paginatedCustomers
-                          .filter((c) => !c.promotions.some((p) => p.promotionId === selectedPromotionId && p.used && p.isSpecialPromotion))
+                          .filter(
+                            (c) =>
+                              !c.promotions.some(
+                                (p) =>
+                                  p.promotionId === selectedPromotionId &&
+                                  p.used &&
+                                  p.isSpecialPromotion
+                              )
+                          )
                           .every((c) => selectedCustomerIds.includes(c.id))}
                         onChange={handleSelectAll}
-                        disabled={selectedPromotion?.status === 'expired' || selectedPromotion?.status === 'inactive'}
+                        disabled={
+                          selectedPromotion?.status === "expired" ||
+                          selectedPromotion?.status === "inactive"
+                        }
                       />
                     </th>
                     <th className="border p-2 w-10 whitespace-nowrap">#</th>
                     <th className="border p-2 whitespace-nowrap">Tên</th>
                     <th className="border p-2 whitespace-nowrap">Email</th>
-                    <th className="border p-2 whitespace-nowrap">Số điện thoại</th>
-                    <th className="border p-2 w-32 whitespace-nowrap">Trạng thái</th>
+                    <th className="border p-2 whitespace-nowrap">
+                      Số điện thoại
+                    </th>
+                    <th className="border p-2 w-32 whitespace-nowrap">
+                      Trạng thái
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {paginatedCustomers.map((cus, index) => (
-                    <tr key={cus.id} className={`hover:bg-gray-50 ${selectedCustomerIds.includes(cus.id) ? 'bg-blue-50' : ''}`}>
+                    <tr
+                      key={cus.id}
+                      className={`hover:bg-gray-50 ${
+                        selectedCustomerIds.includes(cus.id) ? "bg-blue-50" : ""
+                      }`}
+                    >
                       <td className="p-1 text-center">
                         <input
                           type="checkbox"
                           checked={selectedCustomerIds.includes(cus.id)}
                           onChange={() => handleCheckboxChange(cus.id)}
                           disabled={
-                            selectedPromotion?.status === 'expired' ||
-                            selectedPromotion?.status === 'inactive' ||
-                            cus.promotions.some((p) => p.promotionId === selectedPromotionId && p.used && p.isSpecialPromotion)
+                            selectedPromotion?.status === "expired" ||
+                            selectedPromotion?.status === "inactive" ||
+                            cus.promotions.some(
+                              (p) =>
+                                p.promotionId === selectedPromotionId &&
+                                p.used &&
+                                p.isSpecialPromotion
+                            )
                           }
                         />
                       </td>
-                      <td className="border p-1 text-center">{(currentPage - 1) * ITEMS_PER_PAGE + index + 1}</td>
+                      <td className="border p-1 text-center">
+                        {(currentPage - 1) * ITEMS_PER_PAGE + index + 1}
+                      </td>
                       <td className="border p-2 text-center">{cus.name}</td>
                       <td className="border p-2 text-center">{cus.email}</td>
                       <td className="border p-2 text-center">{cus.phone}</td>
                       <td className="border p-1 text-center">
-                        {cus.promotions.some((p) => p.promotionId === selectedPromotionId && p.used && p.isSpecialPromotion) ? (
-                          <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">Đã sử dụng</span>
-                        ) : cus.promotions.some((p) => p.promotionId === selectedPromotionId && p.emailSent) ? (
-                          <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">Đã gửi</span>
+                        {cus.promotions.some(
+                          (p) =>
+                            p.promotionId === selectedPromotionId &&
+                            p.used &&
+                            p.isSpecialPromotion
+                        ) ? (
+                          <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
+                            Đã sử dụng
+                          </span>
+                        ) : cus.promotions.some(
+                            (p) =>
+                              p.promotionId === selectedPromotionId &&
+                              p.emailSent
+                          ) ? (
+                          <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                            Đã gửi
+                          </span>
                         ) : (
                           <button
                             onClick={() => handleQuickSendEmail(cus.id)}
-                            className={`px-3 py-1 rounded text-sm text-white ${selectedPromotion?.status === 'expired' ||
-                              selectedPromotion?.status === 'inactive' ||
-                              cus.promotions.some((p) => p.promotionId === selectedPromotionId && p.used && p.isSpecialPromotion)
-                              ? 'bg-gray-500 cursor-not-allowed'
-                              : 'bg-blue-500 hover:bg-blue-600'
-                              }`}
+                            className={`px-3 py-1 rounded text-sm text-white ${
+                              selectedPromotion?.status === "expired" ||
+                              selectedPromotion?.status === "inactive" ||
+                              cus.promotions.some(
+                                (p) =>
+                                  p.promotionId === selectedPromotionId &&
+                                  p.used &&
+                                  p.isSpecialPromotion
+                              )
+                                ? "bg-gray-500 cursor-not-allowed"
+                                : "bg-blue-500 hover:bg-blue-600"
+                            }`}
                             disabled={
-                              selectedPromotion?.status === 'expired' ||
-                              selectedPromotion?.status === 'inactive' ||
-                              cus.promotions.some((p) => p.promotionId === selectedPromotionId && p.used && p.isSpecialPromotion)
+                              selectedPromotion?.status === "expired" ||
+                              selectedPromotion?.status === "inactive" ||
+                              cus.promotions.some(
+                                (p) =>
+                                  p.promotionId === selectedPromotionId &&
+                                  p.used &&
+                                  p.isSpecialPromotion
+                              )
                             }
                           >
                             Gửi email
@@ -699,8 +865,11 @@ function PromotionList() {
                       <button
                         key={page}
                         onClick={() => setCurrentPage(page)}
-                        className={`px-3 py-1 border rounded-md text-sm ${page === currentPage ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'
-                          }`}
+                        className={`px-3 py-1 border rounded-md text-sm ${
+                          page === currentPage
+                            ? "bg-blue-600 text-white"
+                            : "bg-white text-gray-600 hover:bg-gray-100"
+                        }`}
                       >
                         {page}
                       </button>
@@ -730,73 +899,85 @@ function PromotionList() {
         {isEmailModalOpen && (
           <div className="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50">
             <div className="bg-gradient-to-b from-white to-gray-50 rounded-xl shadow-2xl w-full max-w-3xl p-8 max-h-[90vh] overflow-auto">
-              <h3 className="text-2xl font-bold mb-6 text-gray-800">Soạn email {promotionTitle}</h3>
+              <h3 className="text-2xl font-bold mb-6 text-gray-800">
+                Soạn email {promotionTitle}
+              </h3>
               <div className="mb-6 relative">
-                <label className="block text-sm font-medium text-gray-700 mb-1 transition-all duration-300">Tiêu đề</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1 transition-all duration-300">
+                  Tiêu đề
+                </label>
                 <input
                   type="text"
                   value={emailSubject}
                   onChange={(e) => setEmailSubject(e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 disabled:bg-gray-100"
                   placeholder="Nhập tiêu đề email"
-                  disabled={selectedPromotion?.status === 'expired' || selectedPromotion?.status === 'inactive'}
+                  disabled={
+                    selectedPromotion?.status === "expired" ||
+                    selectedPromotion?.status === "inactive"
+                  }
                 />
               </div>
               <div className="mb-12">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nội dung</label>
-                <ReactQuill
-                  theme="snow"
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nội dung
+                </label>
+                <Editor
+                  apiKey="242t4tlz75qp0zzr2tgk6oz501hd80om15fr7rykscdflilg"
                   value={emailContent}
-                  onChange={setEmailContent}
-                  className="h-64 bg-white rounded-lg border border-gray-300"
-                  modules={quillModules}
-                  readOnly={selectedPromotion?.status === 'expired' || selectedPromotion?.status === 'inactive'}
+                  onEditorChange={(content) => setEmailContent(content)}
+                  disabled={disabledEditor} 
+                  init={{
+                    height: 256,
+                    menubar: true,
+                    plugins: [
+                      "advlist",
+                      "autolink",
+                      "lists",
+                      "link",
+                      "image",
+                      "charmap",
+                      "preview",
+                      "anchor",
+                      "searchreplace",
+                      "visualblocks",
+                      "code",
+                      "fullscreen",
+                      "insertdatetime",
+                      "media",
+                      "table",
+                      "help",
+                      "wordcount",
+                    ],
+                    toolbar:
+                      "undo redo | formatselect | bold italic backcolor | " +
+                      "alignleft aligncenter alignright alignjustify | " +
+                      "bullist numlist outdent indent | image | help",
+                    image_title: true,
+                    automatic_uploads: true,
+                    file_picker_types: "image",
+                    file_picker_callback: function (cb, value, meta) {
+                      const input = document.createElement("input");
+                      input.setAttribute("type", "file");
+                      input.setAttribute("accept", "image/*");
+                      input.onchange = async function () {
+                        const file = input.files?.[0];
+                        if (!file) return;
+                        try {
+                          const result = await uploadToCloudinary(file);
+                          cb(result.url, { title: file.name, alt: file.name });
+                        } catch (err) {
+                          console.error("Upload lỗi:", err);
+                        }
+                      };
+                      input.click();
+                    },
+                    content_style:
+                      "body { font-family:Inter,system-ui,-apple-system; font-size:14px }",
+                  }}
                 />
               </div>
-              <div className="mb-8">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageChange}
-                  className="w-full p-3 border border-gray-300 rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-blue-600 file:text-white hover:file:bg-blue-700 transition-all duration-300 disabled:bg-gray-100"
-                  disabled={selectedPromotion?.status === 'expired' || selectedPromotion?.status === 'inactive'}
-                />
-                {imagePreviews.length > 0 && (
-                  <div className="mt-4 relative flex items-center justify-center">
-                    <button
-                      onClick={handlePrevImage}
-                      disabled={currentImageIndex === 0}
-                      className="absolute left-0 p-2 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 disabled:opacity-50"
-                    >
-                      <FaChevronLeft size={16} />
-                    </button>
-                    <div className="relative">
-                      <img
-                        src={imagePreviews[currentImageIndex]}
-                        alt={`Preview ${currentImageIndex}`}
-                        className="max-w-full h-40 object-contain rounded-lg shadow-md"
-                      />
-                      <button
-                        onClick={() => handleRemoveImage(currentImageIndex)}
-                        className="absolute top-1 right-1 bg-red-600 text-white p-1.5 rounded-full hover:bg-red-700 transition-all duration-300"
-                      >
-                        <FaTimes size={12} />
-                      </button>
-                    </div>
-                    <button
-                      onClick={handleNextImage}
-                      disabled={currentImageIndex === imagePreviews.length - 1}
-                      className="absolute right-0 p-2 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 disabled:opacity-50"
-                    >
-                      <FaChevronRight size={16} />
-                    </button>
-                    <div className="absolute bottom-2 text-sm text-gray-600">
-                      {currentImageIndex + 1}/{imagePreviews.length}
-                    </div>
-                  </div>
-                )}
-              </div>
+
               <div className="flex justify-end gap-4 mt-8">
                 <button
                   className="px-6 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all duration-300 disabled:opacity-50 font-medium"
@@ -806,14 +987,21 @@ function PromotionList() {
                   Hủy bỏ
                 </button>
                 <button
-                  className={`px-6 py-2 rounded-lg text-white font-medium transition-all duration-300 ${selectedPromotion?.status === 'expired' || selectedPromotion?.status === 'inactive' || sendingEmail
-                    ? 'bg-gray-500 cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-700'
-                    }`}
+                  className={`px-6 py-2 rounded-lg text-white font-medium transition-all duration-300 ${
+                    selectedPromotion?.status === "expired" ||
+                    selectedPromotion?.status === "inactive" ||
+                    sendingEmail
+                      ? "bg-gray-500 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  }`}
                   onClick={() => handleSendEmails(false)}
-                  disabled={selectedPromotion?.status === 'expired' || selectedPromotion?.status === 'inactive' || sendingEmail}
+                  disabled={
+                    selectedPromotion?.status === "expired" ||
+                    selectedPromotion?.status === "inactive" ||
+                    sendingEmail
+                  }
                 >
-                  {sendingEmail ? 'Đang gửi...' : 'Gửi email'}
+                  {sendingEmail ? "Đang gửi..." : "Gửi email"}
                 </button>
               </div>
             </div>
@@ -822,13 +1010,18 @@ function PromotionList() {
         {isAddUserModalOpen && (
           <div className="fixed inset-0 backdrop-blur-sm bg-white/30 z-50 flex items-center justify-center">
             <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg">
-              <h2 className="text-lg font-semibold mb-4">Chọn người dùng để thêm vào mã</h2>
+              <h2 className="text-lg font-semibold mb-4">
+                Chọn người dùng để thêm vào mã
+              </h2>
               <div className="flex items-center mb-3">
                 <input
                   type="checkbox"
                   id="selectAllUsers"
                   className="mr-2"
-                  checked={selectedUsersToAdd.length === usersNotInPromo.length && usersNotInPromo.length > 0}
+                  checked={
+                    selectedUsersToAdd.length === usersNotInPromo.length &&
+                    usersNotInPromo.length > 0
+                  }
                   onChange={(e) => {
                     if (e.target.checked) {
                       setSelectedUsersToAdd(usersNotInPromo);
@@ -837,7 +1030,12 @@ function PromotionList() {
                     }
                   }}
                 />
-                <label htmlFor="selectAllUsers" className="text-sm text-gray-700">Chọn tất cả người dùng</label>
+                <label
+                  htmlFor="selectAllUsers"
+                  className="text-sm text-gray-700"
+                >
+                  Chọn tất cả người dùng
+                </label>
               </div>
               <Select
                 isMulti

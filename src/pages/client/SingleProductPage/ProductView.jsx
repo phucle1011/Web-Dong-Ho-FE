@@ -445,18 +445,15 @@ const { slug } = useParams();
                 <div
                   key={variant.id}
                   className={`border rounded-xl px-4 py-2 min-w-[150px] text-center transition
-                    ${inStock
-                      ? "cursor-pointer hover:shadow"
-                      : "opacity-50 cursor-not-allowed"
-                    }
-                    ${isSelected ? "border-blue-600 ring-2 ring-blue-300" : ""
-                    }`}
+                    cursor-pointer hover:shadow
+                    ${!inStock ? "opacity-70" : ""}
+                    ${isSelected ? "border-blue-600 ring-2 ring-blue-300" : ""}
+                  `}
                   onClick={() => {
-                    if (inStock) {
-                      handleVariantSelect(variant);
-                      changeImgHandler(variant.images?.[0]?.image_url || "");
-                    }
+                    handleVariantSelect(variant);
+                    changeImgHandler(variant.images?.[0]?.image_url || "");
                   }}
+                  title={inStock ? "Chọn biến thể" : "Hết hàng - vẫn có thể thêm vào Yêu thích"}
                 >
                   <p className="font-semibold uppercase">{name}</p>
                   {salePrice > 0 && salePrice < originalPrice ? (

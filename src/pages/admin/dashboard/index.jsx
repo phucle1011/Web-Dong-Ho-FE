@@ -60,6 +60,8 @@ function Dashboard() {
   const [orderStatus, setOrderStatus] = useState(null);
   const [promoImpact, setPromoImpact] = useState(null);
   const [topPromos, setTopPromos] = useState([]);
+  const [completedCount, setCompletedCount] = useState(0);
+const [usedPromotionsCount, setUsedPromotionsCount] = useState(0);
 
   const totalRevenueSelectedMonth = revenueData.datasets[0]?.data.reduce((sum, val) => sum + val, 0) || 0;
 
@@ -419,6 +421,37 @@ function Dashboard() {
 
   const redemptionRateSafe = safeNumber(promoImpact?.redemptionRate);
 
+  useEffect(() => {
+  async function fetchCompletedCount() {
+    try {
+      const res = await axios.get(`${Constants.DOMAIN_API}/admin/dashboard/orders/completed-count`);
+      if (res.data?.success) {
+        setCompletedCount(Number(res.data.totalCompleted) || 0);
+      } else {
+        setCompletedCount(0);
+      }
+    } catch (err) {
+      console.error('Lỗi khi đếm đơn hoàn thành:', err);
+      setCompletedCount(0);
+    }
+  }
+  fetchCompletedCount();
+}, []);
+
+useEffect(() => {
+  async function fetchUsedPromotionsCount() {
+    try {
+      const res = await axios.get(`${Constants.DOMAIN_API}/admin/dashboard/used-promotions-count`);
+      if (res.data?.success) {
+        setUsedPromotionsCount(Number(res.data.totalUsedPromotions) || 0);
+      }
+    } catch (err) {
+      console.error("Lỗi khi đếm khuyến mãi đã sử dụng:", err);
+    }
+  }
+  fetchUsedPromotionsCount();
+}, []);
+
   return (
     <div className="page-wrapper">
       <div className="page-breadcrumb">
@@ -454,7 +487,7 @@ function Dashboard() {
             </div>
             <div className="col-md-3">
               <PromoStatCard
-                title="Tổng giảm giá đã áp dụng"
+                title="Số tiền giảm giá đã áp dụng"
                 value={formatVND(promoImpact.totalDiscount)}
                 percentage={
                   (promoImpact.totalDiscount / (promoImpact.revenueWithPromo + promoImpact.totalDiscount)) * 100
@@ -464,31 +497,23 @@ function Dashboard() {
               />
             </div>
             <div className="col-md-3">
-              <PromoStatCard
-                title="AOV có khuyến mãi"
-                value={formatVND(promoImpact.AOVWithPromo)}
-                percentage={
-                  promoImpact.AOVWithoutPromo === 0
-                    ? 0
-                    : ((promoImpact.AOVWithPromo - promoImpact.AOVWithoutPromo) / promoImpact.AOVWithoutPromo) * 100
-                }
-                isUp={promoImpact.AOVWithPromo >= promoImpact.AOVWithoutPromo}
-                pathColor="#f59e0b"
-              />
-            </div>
-            <div className="col-md-3">
-              <PromoStatCard
-                title="AOV không khuyến mãi"
-                value={formatVND(promoImpact.AOVWithoutPromo)}
-                percentage={
-                  promoImpact.AOVWithPromo === 0
-                    ? 0
-                    : ((promoImpact.AOVWithoutPromo - promoImpact.AOVWithPromo) / promoImpact.AOVWithPromo) * 100
-                }
-                isUp={promoImpact.AOVWithoutPromo >= promoImpact.AOVWithPromo}
-                pathColor="#ef4444"
-              />
-            </div>
+  <PromoStatCard
+    title="Khuyến mãi đã sử dụng"
+    value={<CountUp end={usedPromotionsCount} duration={0.8} separator="," />}
+    pathColor="#6610f2"
+  />
+</div>
+
+           <div className="col-md-3">
+  <PromoStatCard
+    title="Đơn hàng hoàn thành"
+    value={
+      <CountUp end={completedCount} duration={0.8} separator="," />
+    }
+    pathColor="#f59e0b"
+  />
+</div>
+
           </div>
         )}
 

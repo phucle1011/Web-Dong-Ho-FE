@@ -6,6 +6,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useNavigate } from "react-router-dom";
+import Constants from "../../../Constants";
 
 /** Decode JWT (FE) */
 const decodeToken = (token) => {
@@ -105,7 +106,7 @@ export default function Contact() {
     try {
       setIsSubmitting(true);
       await axios.post(
-        "https://web-dong-ho-be.onrender.com/contact", 
+        `${Constants.DOMAIN_API}/contact`, 
         {
           first_name: formData.first_name,
           subject: formData.subject,

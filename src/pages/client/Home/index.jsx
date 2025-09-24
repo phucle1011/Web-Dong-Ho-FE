@@ -41,13 +41,13 @@ useEffect(() => {
         axios.get(`${Constants.DOMAIN_API}/products/getallnew`),
         axios.get(`${Constants.DOMAIN_API}/top-sold-products`),
         axios.get(`${Constants.DOMAIN_API}/top-discounted-products`),
-        axios.get(`${Constants.DOMAIN_API}/brands/top`),
+        // axios.get(`${Constants.DOMAIN_API}/brands/top`),
       ]);
 
       setProductnew(newRes.data.data || []);
       setProductTopsold(topSoldRes.data || []);
       setProductTopDiscounted(topDiscounted.data || []);
-      setTopBrands(topBrandsRes.data.data || []);
+      // setTopBrands(topBrandsRes.data.data || []);
 
       const flashSaleRes = await axios.get(`${Constants.DOMAIN_API}/client/flashSale`);
       const flashSalesData = flashSaleRes.data?.data || [];

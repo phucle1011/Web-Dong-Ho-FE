@@ -521,8 +521,8 @@ const PromotionProductList = () => {
                                       </td>
                                       <td className="border p-2 text-center">
                                         {(() => {
-                                          const canDelete =
-                                            itemStatus === "upcoming"; // CHỈ cho xóa khi sắp diễn ra
+                                      const canDelete = itemStatus === "active" || itemStatus === "upcoming";
+ // CHỈ cho xóa khi sắp diễn ra
                                           const title = canDelete
                                             ? "Xóa"
                                             : itemStatus === "active"

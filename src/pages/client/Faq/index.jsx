@@ -4,6 +4,7 @@ import Accodion from "../Helpers/Accodion";
 import InputFaq from "../Helpers/InputFaq";
 import PageTitle from "../Helpers/PageTitle";
 import Layout from "../Partials/LayoutHomeThree";
+import Constants from "../../../Constants";
 
 export default function Faq() {
   const [formData, setFormData] = useState({
@@ -28,7 +29,7 @@ const handleSubmit = async (e) => {
   }
 
   try {
-    const res = await fetch("https://web-dong-ho-be.onrender.com/contact/faq", {
+    const res = await fetch(`${Constants.DOMAIN_API}`/contact/faq``, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(formData),

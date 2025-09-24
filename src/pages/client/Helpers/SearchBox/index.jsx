@@ -10,34 +10,31 @@ export default function SearchBox({ className, onSearch }) {
   const location = useLocation();
   const [keyword, setKeyword] = useState("");
 
-  // GIỮ NGUYÊN: fallback theo giá trị đã biết
+  // Fallback theo giá trị đã biết
   const [sizes, setSizes] = useState([]);
   const [origins, setOrigins] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [waters, setWaters] = useState([]);
 
-  // Danh sách màu & phân trang cục bộ
-  const [colorsAll, setColorsAll] = useState([]);        // tất cả màu hợp lệ dạng "#rrggbb"
+  // Màu & phân trang cục bộ
+  const [colorsAll, setColorsAll] = useState([]);
   const [colorPage, setColorPage] = useState(1);
   const COLOR_PAGE_SIZE = 30;
 
   const [loadingAttrs, setLoadingAttrs] = useState(true);
   const [attrError, setAttrError] = useState(null);
 
-  // Popover từ NÚT MÀU (chứa luôn chọn thuộc tính)
+  // Popover
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   // Thuộc tính & giá trị
-  const [allAttributes, setAllAttributes] = useState([]);            // [{value:id, label:name}]
-  const [selectedAttributes, setSelectedAttributes] = useState([]);  // [{value,label}]
-  const [valuesByAttr, setValuesByAttr] = useState({});              // { [attrId]: [{value,label}] }
+  const [allAttributes, setAllAttributes] = useState([]); // [{value:id,label:name}]
+  const [selectedAttributes, setSelectedAttributes] = useState([]); // [{value,label}]
+  const [valuesByAttr, setValuesByAttr] = useState({}); // { [attrId]: [{value,label}] }
   const [selectedValuesByAttr, setSelectedValuesByAttr] = useState({}); // { [attrId]: string[] }
 
-  // ==== Phân trang màu: tính toán trang hiện tại ====
-  const totalColorPages = Math.max(
-    1,
-    Math.ceil((colorsAll?.length || 0) / COLOR_PAGE_SIZE)
-  );
+  // ==== Phân trang màu
+  const totalColorPages = Math.max(1, Math.ceil((colorsAll?.length || 0) / COLOR_PAGE_SIZE));
   const colorsPaged = useMemo(() => {
     const start = (colorPage - 1) * COLOR_PAGE_SIZE;
     return (colorsAll || []).slice(start, start + COLOR_PAGE_SIZE);
@@ -47,21 +44,15 @@ export default function SearchBox({ className, onSearch }) {
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const [
-          sizeRes,
-          originRes,
-          materialRes,
-          waterRes,
-          colorRes,
-          attributesRes,
-        ] = await Promise.all([
-          axios.get(`${Constants.DOMAIN_API}/attribute-values`, { params: { attribute_id: 31, page: 1, limit: 100 } }),
-          axios.get(`${Constants.DOMAIN_API}/attribute-values`, { params: { attribute_id: 26, page: 1, limit: 100 } }),
-          axios.get(`${Constants.DOMAIN_API}/attribute-values`, { params: { attribute_id: 32, page: 1, limit: 100 } }),
-          axios.get(`${Constants.DOMAIN_API}/attribute-values`, { params: { attribute_id: 33, page: 1, limit: 100 } }),
-          axios.get(`${Constants.DOMAIN_API}/attribute-values`, { params: { attribute_id: 35, page: 1, limit: 200 } }),
-          axios.get(`${Constants.DOMAIN_API}/product-attributes`),
-        ]);
+        const [sizeRes, originRes, materialRes, waterRes, colorRes, attributesRes] =
+          await Promise.all([
+            axios.get(`${Constants.DOMAIN_API}/attribute-values`, { params: { attribute_id: 31, page: 1, limit: 100 } }),
+            axios.get(`${Constants.DOMAIN_API}/attribute-values`, { params: { attribute_id: 26, page: 1, limit: 100 } }),
+            axios.get(`${Constants.DOMAIN_API}/attribute-values`, { params: { attribute_id: 32, page: 1, limit: 100 } }),
+            axios.get(`${Constants.DOMAIN_API}/attribute-values`, { params: { attribute_id: 33, page: 1, limit: 100 } }),
+            axios.get(`${Constants.DOMAIN_API}/attribute-values`, { params: { attribute_id: 35, page: 1, limit: 200 } }),
+            axios.get(`${Constants.DOMAIN_API}/product-attributes`),
+          ]);
 
         setSizes(sizeRes.data.data.map(v => v.value.toLowerCase()));
         setOrigins(originRes.data.data.map(v => v.value.toLowerCase()));
@@ -71,8 +62,8 @@ export default function SearchBox({ className, onSearch }) {
         const colorList = (colorRes.data.data || [])
           .map(v => String(v.value).toLowerCase())
           .filter(v => /^#([0-9a-f]{6})$/.test(v));
-        setColorsAll(Array.from(new Set(colorList))); // unique
-        setColorPage(1); // về trang đầu khi load xong
+        setColorsAll(Array.from(new Set(colorList)));
+        setColorPage(1);
 
         const attrs = (attributesRes.data?.data || []).map(a => ({ value: a.id, label: a.name }));
         setAllAttributes(attrs);
@@ -86,7 +77,7 @@ export default function SearchBox({ className, onSearch }) {
     fetchAll();
   }, []);
 
-  // Tải options giá trị cho từng thuộc tính
+  // Tải values cho thuộc tính
   const ensureValuesLoaded = async (attrIds) => {
     const missings = attrIds.filter(id => !valuesByAttr[id]);
     if (missings.length === 0) return;
@@ -141,7 +132,7 @@ export default function SearchBox({ className, onSearch }) {
   // Chọn màu -> set keyword = hex
   const pickColor = (c) => setKeyword(c.hex);
 
-  // Tạo data submit từ map đã chọn
+  // Data submit
   const pickedAttrIds = useMemo(
     () =>
       Object.entries(selectedValuesByAttr)
@@ -167,7 +158,6 @@ export default function SearchBox({ className, onSearch }) {
     const hasPickedAttr = pickedAttrIds.length > 0 && pickedAttrValues.length > 0;
     const t = keyword.trim().toLowerCase();
 
-    // Nếu trống hết → xóa query URL + báo onSearch rỗng
     if (!hasPickedAttr && !t) {
       if (location.search) navigate(location.pathname, { replace: true });
       onSearch?.({ keyword: "", attributeValues: [], attributeIds: [] });
@@ -175,7 +165,6 @@ export default function SearchBox({ className, onSearch }) {
       return;
     }
 
-    // ƯU TIÊN 1: có thuộc tính + giá trị
     if (hasPickedAttr) {
       onSearch?.({
         keyword: "",
@@ -186,7 +175,6 @@ export default function SearchBox({ className, onSearch }) {
       return;
     }
 
-    // ƯU TIÊN 2: fallback theo keyword (bao gồm #hex)
     const params = { keyword: "", attributeValues: [], attributeIds: [] };
     if (sizes.includes(t)) {
       params.attributeIds = [31];
@@ -210,33 +198,56 @@ export default function SearchBox({ className, onSearch }) {
     setIsPanelOpen(false);
   };
 
-  // Nhỏ gọn react-select + giảm font-size
+  // ===== Styles: chống tràn + fix z-index menu
   const smallSelectStyles = {
-    control: (base) => ({
+    control: (base, state) => ({
       ...base,
-      minHeight: 28,
-      height: 28,
-      borderColor: "#e5e7eb",
+      minHeight: 30,
+      height: 30,
+      borderColor: state.isFocused ? "#60a5fa" : "#e5e7eb",
       boxShadow: "none",
+      "&:hover": { borderColor: "#93c5fd" },
     }),
-    valueContainer: (base) => ({ ...base, padding: "0 6px" }),
-    input: (base) => ({
+    valueContainer: (base) => ({
       ...base,
-      margin: 0,
-      padding: 0,
-      fontSize: 12,
+      padding: "0 6px",
+      display: "flex",
+      flexWrap: "nowrap",
+      overflowX: "auto",
+      overflowY: "hidden",
+      scrollbarWidth: "thin",
+      maxWidth: "100%",
     }),
+    multiValue: (base) => ({
+      ...base,
+      flex: "0 0 auto",
+      maxWidth: "100%",
+    }),
+    multiValueLabel: (base) => ({
+      ...base,
+      fontSize: 12,
+      whiteSpace: "nowrap",
+      textOverflow: "ellipsis",
+      overflow: "hidden",
+    }),
+    multiValueRemove: (base) => ({
+      ...base,
+      paddingLeft: 2,
+      paddingRight: 2,
+    }),
+    input: (base) => ({ ...base, margin: 0, padding: 0, fontSize: 12 }),
     indicatorsContainer: (base) => ({ ...base, height: 28 }),
-    placeholder: (base) => ({ ...base, fontSize: 12 }),
+    placeholder: (base) => ({ ...base, fontSize: 12, whiteSpace: "nowrap" }),
     singleValue: (base) => ({ ...base, fontSize: 12 }),
-    multiValueLabel: (base) => ({ ...base, fontSize: 12 }),
     option: (base) => ({ ...base, fontSize: 12, padding: "6px 8px" }),
     menu: (base) => ({ ...base, zIndex: 60 }),
+    // QUAN TRỌNG: z-index cao cho portal
+    menuPortal: (base) => ({ ...base, zIndex: 70 }),
   };
 
   return (
     <div className={`w-full flex items-center border bg-white rounded-md ${className || ""}`}>
-      {/* Nút TRÒN chọn màu (mở panel chứa Màu + Thuộc tính) */}
+      {/* Nút TRÒN chọn màu */}
       <div className="relative px-2">
         <button
           type="button"
@@ -247,7 +258,7 @@ export default function SearchBox({ className, onSearch }) {
         />
         {isPanelOpen && (
           <>
-            <div className="absolute left-0 mt-1 p-3 bg-white border rounded shadow z-50 w-[360px] max-w-[92vw]">
+            <div className="absolute left-0 mt-1 p-3 bg-white border rounded shadow z-50 w-[360px] max-w-[92vw] max-h-[70vh] overflow-y-auto">
               {/* Thuộc tính */}
               <div className="mb-3">
                 <div className="text-[11px] font-medium mb-1">Thuộc tính</div>
@@ -260,6 +271,10 @@ export default function SearchBox({ className, onSearch }) {
                   onChange={onChangeAttributes}
                   isDisabled={loadingAttrs}
                   styles={smallSelectStyles}
+                  // FIX: menu không bị backdrop chặn
+                  menuPortalTarget={document.body}
+                  menuPosition="fixed"
+                  closeMenuOnSelect={false}
                 />
 
                 {selectedAttributes.length > 0 && (
@@ -270,7 +285,7 @@ export default function SearchBox({ className, onSearch }) {
                       const selectedVals = (selectedValuesByAttr[attrId] || []).map(v => ({ value: v, label: v }));
                       return (
                         <div key={attrId} className="flex items-center gap-2">
-                          <span className="text-[11px] min-w-24 truncate">{attr.label}:</span>
+                          <span className="text/[11px] min-w-24 truncate">{attr.label}:</span>
                           <div className="flex-1">
                             <Select
                               classNamePrefix="attr-values"
@@ -281,6 +296,9 @@ export default function SearchBox({ className, onSearch }) {
                               onChange={(vals) => onChangeAttrValues(attrId, vals)}
                               isDisabled={loadingAttrs}
                               styles={smallSelectStyles}
+                              menuPortalTarget={document.body}
+                              menuPosition="fixed"
+                              closeMenuOnSelect={false}
                             />
                           </div>
                         </div>
@@ -310,7 +328,6 @@ export default function SearchBox({ className, onSearch }) {
               <div>
                 <div className="text-[11px] font-medium mb-1">Màu sắc</div>
 
-                {/* Ô preview màu: chữ căn GIỮA ô vuông */}
                 {showCircle && (
                   <div
                     className="w-full h-20 rounded-md mb-2 flex items-center justify-center text-white text-sm font-medium"
@@ -322,13 +339,8 @@ export default function SearchBox({ className, onSearch }) {
 
                 {(colorsPaged?.length || 0) > 0 ? (
                   <>
-                    <BlockPicker
-                      colors={colorsPaged}
-                      triangle="hide"
-                      onChangeComplete={pickColor}
-                    />
+                    <BlockPicker colors={colorsPaged} triangle="hide" onChangeComplete={pickColor} />
 
-                    {/* Điều khiển phân trang */}
                     <div className="flex items-center justify-between mt-2">
                       <button
                         type="button"
@@ -338,9 +350,7 @@ export default function SearchBox({ className, onSearch }) {
                       >
                         ‹ Trước
                       </button>
-                      <span className="text-[11px]">
-                        Trang {colorPage}/{totalColorPages}
-                      </span>
+                      <span className="text-[11px]">Trang {colorPage}/{totalColorPages}</span>
                       <button
                         type="button"
                         className="px-2 py-1 text-[11px] border rounded disabled:opacity-50"
@@ -356,18 +366,14 @@ export default function SearchBox({ className, onSearch }) {
                 )}
 
                 {showCircle && (
-                  <button
-                    type="button"
-                    className="mt-2 text-[11px] underline"
-                    onClick={() => setKeyword("")}
-                  >
+                  <button type="button" className="mt-2 text-[11px] underline" onClick={() => setKeyword("")}>
                     Xóa màu
                   </button>
                 )}
               </div>
             </div>
 
-            {/* click-away */}
+            {/* click-away (z-40) */}
             <div className="fixed inset-0 z-40" onClick={() => setIsPanelOpen(false)} />
           </>
         )}

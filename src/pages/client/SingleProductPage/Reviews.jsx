@@ -7,6 +7,7 @@ import StarRating from "../Helpers/StarRating";
 import LoaderStyleOne from "../Helpers/Loaders/LoaderStyleOne";
 import { decodeToken } from "../Helpers/jwtDecode";
 import { useLocation, useNavigate } from "react-router-dom";
+import Constants from "../../../Constants";
 const ProductReviewSection = () => {
   const [orderDetailId, setOrderDetailId] = useState(null);
   const [comments, setComments] = useState([]);
@@ -76,7 +77,7 @@ const ProductReviewSection = () => {
   const fetchComments = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`https://web-dong-ho-be.onrender.com/comment/product/${slug}`);
+      const res = await axios.get(`${Constants.DOMAIN_API}/comment/product/${slug}`);
       const data = res.data.data;
       const parentComments = data.filter((c) => c.parent_id === null);
       const childComments = data.filter((c) => c.parent_id !== null);
@@ -271,7 +272,7 @@ const ProductReviewSection = () => {
           return;
         }
 
-        await axios.put(`https://web-dong-ho-be.onrender.com/comments/${existingComment.id}`, {
+        await axios.put(`${Constants.DOMAIN_API}/comments/${existingComment.id}`, {
           rating,
           comment_text: message,
           images: imageUrls,
@@ -288,7 +289,7 @@ const ProductReviewSection = () => {
           order_detail_id: Number(orderDetailId),
           images: imageUrls,
         };
-        await axios.post("https://web-dong-ho-be.onrender.com/comments", payload);
+        await axios.post(`${Constants.DOMAIN_API}/comments`, payload);
         toast.success("Đánh giá thành công! Cảm ơn bạn đã đánh giá.");
 
       }
@@ -457,114 +458,129 @@ const ProductReviewSection = () => {
             </div>
           </div>
         ))}
-
+{filteredComments.length > 5 && (
+  <div className="flex justify-center mt-4">
+    <button
+      onClick={() =>
+        visibleCount < filteredComments.length
+          ? setVisibleCount((prev) => prev + 5)
+          : setVisibleCount(5)
+      }
+      type="button"
+      className="black-btn w-[300px] h-[50px] flex justify-center items-center rounded-md text-center"
+    >
+      <span className="text-sm font-semibold text-white">
+        {visibleCount < filteredComments.length ? "Hiện thêm" : "Ẩn bớt "}
+      </span>
+    </button>
+  </div>
+)}
 
       </div>
 
       {/* Form viết đánh giá */}
-      {userId && orderDetailId ? (
-        <div className="write-review w-full mt-10 px-6 max-w-[900px] mx-auto">
-          <h1 className="text-2xl font-medium text-qblack mb-5">Viết đánh giá của bạn</h1>
-          <div className="flex space-x-1 items-center mb-6">
-            <StarRating
-              hoverRating={hoverRating}
-              hoverHandler={(val) => setHoverRating(val)}
-              rating={rating}
-              ratingHandler={(val) => setRating(val)}
-            />
-            <span className="text-qblack text-[15px] font-normal mt-1">
-              ({rating}.0)
-            </span>
-          </div>
-          <textarea
-            value={message}
-            onChange={(e) => {
-              if (e.target.value.length <= 100) {
-                setMessage(e.target.value);
-              } else {
-                toast.error("Nội dung đánh giá không được vượt quá 100 ký tự!");
-              }
-            }}
-            rows="4"
-            placeholder="Nội dung đánh giá (tối đa 100 ký tự)..."
-            className="w-full border p-4 rounded-md outline-none mb-1"
-          />
+{userId && orderDetailId ? (
+  <div className="write-review w-full mt-10 px-6 max-w-[900px] mx-auto">
+    <div className="bg-white rounded-md shadow-md p-6">
+      <h1 className="text-2xl font-medium text-qblack mb-5">Viết đánh giá của bạn</h1>
+      <div className="flex space-x-1 items-center mb-6">
+        <StarRating
+          hoverRating={hoverRating}
+          hoverHandler={(val) => setHoverRating(val)}
+          rating={rating}
+          ratingHandler={(val) => setRating(val)}
+        />
+        <span className="text-qblack text-[15px] font-normal mt-1">
+          ({rating}.0)
+        </span>
+      </div>
+      <textarea
+        value={message}
+        onChange={(e) => {
+          if (e.target.value.length <= 100) {
+            setMessage(e.target.value);
+          } else {
+            toast.error("Nội dung đánh giá không được vượt quá 100 ký tự!");
+          }
+        }}
+        rows="4"
+        placeholder="Nội dung đánh giá (tối đa 100 ký tự)..."
+        className="w-full border p-4 rounded-md outline-none mb-1"
+      />
 
-          <div className="mb-6">
-            <label className="block mb-2 text-sm font-medium text-qblack">Tải hình ảnh (tối đa 3):</label>
-            <label
-              htmlFor="upload-images"
-              className="w-full max-w-[300px] h-[45px] border border-gray-300 rounded-md flex items-center justify-center cursor-pointer hover:bg-gray-100 transition"
-            >
-              <span className="text-sm text-gray-600">Chọn ảnh từ thiết bị</span>
-            </label>
-            <input
-              id="upload-images"
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={(e) => {
-                const files = Array.from(e.target.files);
-                if (files.length > 3) {
-                  toast.error("Chỉ được tải tối đa 3 ảnh. Vui lòng chọn lại ảnh.");
-                  e.target.value = null; // reset input nếu lỗi
-                  return;
-                }
-                setImageFiles(files);
-              }}
-              className="hidden"
-            />
+      <div className="mb-6">
+        <label className="block mb-2 text-sm font-medium text-qblack">Tải hình ảnh (tối đa 3):</label>
+        <label
+          htmlFor="upload-images"
+          className="w-full max-w-[300px] h-[45px] border border-gray-300 rounded-md flex items-center justify-center cursor-pointer hover:bg-gray-100 transition"
+        >
+          <span className="text-sm text-gray-600">Chọn ảnh từ thiết bị</span>
+        </label>
+        <input
+          id="upload-images"
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={(e) => {
+            const files = Array.from(e.target.files);
+            if (files.length > 3) {
+              toast.error("Chỉ được tải tối đa 3 ảnh. Vui lòng chọn lại ảnh.");
+              e.target.value = null; // reset input nếu lỗi
+              return;
+            }
+            setImageFiles(files);
+          }}
+          className="hidden"
+        />
 
-            {imageFiles?.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-4">
-                {imageFiles.map((file, idx) => (
-                  <div key={idx} className="relative w-24 h-24 border rounded-md overflow-hidden">
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt={`Preview ${idx}`}
-                      className="w-full h-full object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newFiles = imageFiles.filter((_, i) => i !== idx);
-                        setImageFiles(newFiles);
+        {imageFiles?.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-4">
+            {imageFiles.map((file, idx) => (
+              <div key={idx} className="relative w-24 h-24 border rounded-md overflow-hidden">
+                <img
+                  src={URL.createObjectURL(file)}
+                  alt={`Preview ${idx}`}
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newFiles = imageFiles.filter((_, i) => i !== idx);
+                    setImageFiles(newFiles);
 
-                        // 🔑 reset input để có thể chọn lại file cũ
-                        const inputEl = document.getElementById("upload-images");
-                        if (inputEl) inputEl.value = "";
-                      }}
-                      className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] leading-none hover:bg-red-600"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
+                    // 🔑 reset input để có thể chọn lại file cũ
+                    const inputEl = document.getElementById("upload-images");
+                    if (inputEl) inputEl.value = "";
+                  }}
+                  className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] leading-none hover:bg-red-600"
+                >
+                  ×
+                </button>
               </div>
-            )}
-
-
-
+            ))}
           </div>
-          <div className="flex justify-end">
-            <button
-              onClick={reviewAction}
-              type="button"
-              className="black-btn w-[300px] h-[50px] flex justify-center"
-            >
-              <span className="flex space-x-1 items-center h-full">
-                <span className="text-sm font-semibold">Gửi đánh giá</span>
-                {reviewLoading && (
-                  <span className="w-5" style={{ transform: "scale(0.3)" }}>
-                    <LoaderStyleOne />
-                  </span>
-                )}
+        )}
+      </div>
+      <div className="flex justify-end">
+        <button
+          onClick={reviewAction}
+          type="button"
+          className="black-btn w-[300px] h-[50px] flex justify-center rounded-md"
+        >
+          <span className="flex space-x-1 items-center h-full">
+            <span className="text-sm font-semibold">Gửi đánh giá</span>
+            {reviewLoading && (
+              <span className="w-5" style={{ transform: "scale(0.3)" }}>
+                <LoaderStyleOne />
               </span>
-            </button>
-          </div>
-        </div>
-      ) : userId && !orderDetailId ? (
-        <></>
+            )}
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+) : userId && !orderDetailId ? (
+  <></>
       ) : (
         <p className="text-center mt-10 text-gray-500">Vui lòng đăng nhập để viết đánh giá.</p>
       )}

@@ -117,6 +117,7 @@ const AppRoutes = () => {
   return (
     <>
       {!location.pathname.startsWith("/admin") && <GeminiChatbox />}
+            <ToastContainer/>
       <Routes>
         {/*--------------------CLIENT-------------------- */}
         <Route path="/" element={<ClientLayout />}>

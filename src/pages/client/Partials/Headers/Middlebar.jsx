@@ -100,6 +100,34 @@ export default function Middlebar({ className, type }) {
     };
   }, []);
 
+  useEffect(() => {
+    // --- Lắng nghe trong cùng TAB ---
+    const onWishlistChanged = () => loadWishlistCount();
+    window.addEventListener("wishlist:changed", onWishlistChanged);
+
+    // --- Lắng nghe thay đổi localStorage (khác TAB/WINDOW) ---
+    const onStorage = (e) => {
+      if (e.key === "wishlistUpdatedAt") {
+        loadWishlistCount();
+      }
+    };
+    window.addEventListener("storage", onStorage);
+
+    // --- Khi quay lại tab, tự refresh ---
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        loadWishlistCount();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      window.removeEventListener("wishlist:changed", onWishlistChanged);
+      window.removeEventListener("storage", onStorage);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+
   const handleSearch = ({ keyword, brandIds, attributeValues, attributeIds }) => {
     const params = new URLSearchParams();
     if (keyword?.trim()) params.append("keyword", keyword.trim());

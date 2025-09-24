@@ -4,7 +4,8 @@ import { Link } from "react-router-dom";
 import { FaMicrophone } from "react-icons/fa";
 import { FiPhone } from "react-icons/fi";
 
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const SpeechRecognition =
+  window.SpeechRecognition || window.webkitSpeechRecognition;
 
 export default function GeminiChatbox() {
   const [show, setShow] = useState(false);
@@ -200,7 +201,13 @@ export default function GeminiChatbox() {
             <span>Hỗ trợ trực tuyến</span>
             <button
               onClick={() => setShow(false)}
-              style={{ background: "none", border: "none", color: "white", fontSize: "20px", cursor: "pointer" }}
+              style={{
+                background: "none",
+                border: "none",
+                color: "white",
+                fontSize: "20px",
+                cursor: "pointer",
+              }}
             >
               ×
             </button>
@@ -218,12 +225,22 @@ export default function GeminiChatbox() {
                 <div>
                   <div>{msg.text}</div>
                   {msg.products?.length > 0 && (
-                    <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                    <div
+                      style={{
+                        marginTop: "10px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "10px",
+                      }}
+                    >
                       {msg.products.map((product) => (
                         <Link
                           key={product.id}
-                          to="/product"
-                          state={{ productId: [product.id] }}
+                          to={`/product/${encodeURIComponent(
+                            (product.slug && product.slug.trim()) ||
+                              String(product.id)
+                          )}`}
+                          state={{ productId: product.id }}
                           className="flex items-center gap-2 p-2 border rounded-md hover:shadow-sm transition bg-white no-underline text-black"
                         >
                           <img
@@ -237,7 +254,9 @@ export default function GeminiChatbox() {
                             }}
                           />
                           <div style={{ flexGrow: 1 }}>
-                            <span className="block font-medium text-sm">{product.name}</span>
+                            <span className="block font-medium text-sm">
+                              {product.name}
+                            </span>
                             {product.final_price ? (
                               <span className="block text-sm">
                                 <span className="line-through text-gray-500 mr-1">
@@ -261,7 +280,8 @@ export default function GeminiChatbox() {
                     <div style={{ marginTop: "10px" }}>
                       <Link
                         to="/contact"
-                        className="inline-flex items-center gap-2 px-6 py-2 bg-yellow-500 text-white text-sm font-semibold rounded-full shadow hover:bg-yellow-600 transition duration-300">
+                        className="inline-flex items-center gap-2 px-6 py-2 bg-yellow-500 text-white text-sm font-semibold rounded-full shadow hover:bg-yellow-600 transition duration-300"
+                      >
                         <FiPhone className="text-lg" />
                         Liên hệ ngay
                       </Link>

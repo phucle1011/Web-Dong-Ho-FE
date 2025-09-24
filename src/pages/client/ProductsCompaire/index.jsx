@@ -5,7 +5,7 @@ import InputForm from "../Helpers/InputForm";
 import PageTitle from "../Helpers/PageTitle";
 import Layout from "../Partials/LayoutHomeThree";
 import '@fortawesome/fontawesome-free/css/all.min.css';
-
+import Constants from "../../../Constants";
 const MAX_COMPARE = 4;
 function capitalizeFirstLetter(string) {
   if (!string) return "";
@@ -43,31 +43,31 @@ export default function ProductsCompare() {
   const [filteredLists, setFilteredLists] = useState(Array(MAX_COMPARE).fill([]));
   const [allAttributes, setAllAttributes] = useState([]);
   useEffect(() => {
-    fetch("https://web-dong-ho-be.onrender.com/products/compare")
+    fetch(`${Constants.DOMAIN_API}/products/compare`)
       .then((res) => res.json())
       .then((data) => {
         const variantList = [];
 
-    data.data.forEach((product) => {
-  product.variants.forEach((variant) => {
-    if (!variant.isAuction) { 
-      variantList.push({
-        productId: product.id,
-        productName: product.name,
-        productDescription: product.description,
-        productThumbnail: product.thumbnail,
-        brand: product.brand?.name || "-",
-        averageRating: product.average_rating,
-        variantId: variant.id,
-        price: variant.price,
-        stock: variant.stock,
-        sku: variant.sku,
-        images: variant.images || [],
-        attributeValues: variant.attributeValues || [],
-      });
-    }
-  });
-});
+        data.data.forEach((product) => {
+          product.variants.forEach((variant) => {
+            if (!variant.isAuction) {
+              variantList.push({
+                productId: product.id,
+                productName: product.name,
+                productDescription: product.description,
+                productThumbnail: product.thumbnail,
+                brand: product.brand?.name || "-",
+                averageRating: product.average_rating,
+                variantId: variant.id,
+                price: variant.price,
+                stock: variant.stock,
+                sku: variant.sku,
+                images: variant.images || [],
+                attributeValues: variant.attributeValues || [],
+              });
+            }
+          });
+        });
 
 
         setVariants(variantList);
@@ -146,24 +146,24 @@ export default function ProductsCompare() {
     localStorage.setItem("compareList", JSON.stringify(updated));
   };
 
-const renderStars = (rating) => {
-  if (!rating || isNaN(parseFloat(rating))) return <span>-</span>;
+  const renderStars = (rating) => {
+    if (!rating || isNaN(parseFloat(rating))) return <span>-</span>;
 
-  const stars = [];
-  const numericRating = parseFloat(rating);
+    const stars = [];
+    const numericRating = parseFloat(rating);
 
-  for (let i = 1; i <= 5; i++) {
-    if (i <= numericRating) {
-      stars.push(<i key={i} className="fas fa-star text-yellow-400" />);
-    } else if (i - 0.5 <= numericRating) {
-      stars.push(<i key={i} className="fas fa-star-half-alt text-yellow-400" />);
-    } else {
-      stars.push(<i key={i} className="far fa-star text-yellow-400" />);
+    for (let i = 1; i <= 5; i++) {
+      if (i <= numericRating) {
+        stars.push(<i key={i} className="fas fa-star text-yellow-400" />);
+      } else if (i - 0.5 <= numericRating) {
+        stars.push(<i key={i} className="fas fa-star-half-alt text-yellow-400" />);
+      } else {
+        stars.push(<i key={i} className="far fa-star text-yellow-400" />);
+      }
     }
-  }
 
-  return stars;
-};
+    return stars;
+  };
 
 
 
@@ -277,21 +277,21 @@ const renderStars = (rating) => {
                   },
                   { label: "Mã Sản Phẩm", value: (v) => v?.sku || "-" },
                   { label: "Tồn kho", value: (v) => v?.stock ?? "-" },
-{
-  label: "Đánh giá",
-  value: (v) => {
-    if (!v || !v.averageRating) return <span className="text-xs">-</span>;
+                  {
+                    label: "Đánh giá",
+                    value: (v) => {
+                      if (!v || !v.averageRating) return <span className="text-xs">-</span>;
 
-    const rating = parseFloat(v.averageRating);
+                      const rating = parseFloat(v.averageRating);
 
-    return (
-      <div className="flex items-center justify-center gap-1">
-        <div className="flex">{renderStars(rating)}</div>
-        <span className="text-xs text-gray-600">– {rating.toFixed(1)}</span>
-      </div>
-    );
-  }
-}
+                      return (
+                        <div className="flex items-center justify-center gap-1">
+                          <div className="flex">{renderStars(rating)}</div>
+                          <span className="text-xs text-gray-600">– {rating.toFixed(1)}</span>
+                        </div>
+                      );
+                    }
+                  }
 
 
 
@@ -320,21 +320,21 @@ const renderStars = (rating) => {
                       {selectedVariants.map((v, i) => {
                         const value = v ? getAttributeValue(v, attr) : "-";
                         return (
-<td key={i} className="text-center text-sm px-[26px] py-[20px]">
-  {attr.toLowerCase() === "color" || attr.toLowerCase() === "màu sắc" ? (
-    value !== "-" ? (
-      <div
-        className="w-6 h-6 mx-auto border" 
-        style={{ backgroundColor: value }}
-        title={value}
-      />
-    ) : (
-      "-"
-    )
-  ) : (
-    value
-  )}
-</td>
+                          <td key={i} className="text-center text-sm px-[26px] py-[20px]">
+                            {attr.toLowerCase() === "color" || attr.toLowerCase() === "màu sắc" ? (
+                              value !== "-" ? (
+                                <div
+                                  className="w-6 h-6 mx-auto border"
+                                  style={{ backgroundColor: value }}
+                                  title={value}
+                                />
+                              ) : (
+                                "-"
+                              )
+                            ) : (
+                              value
+                            )}
+                          </td>
 
                         );
                       })}

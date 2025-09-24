@@ -2,33 +2,81 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Constants from "../../../../Constants";
-import { FaChevronDown, FaChevronUp } from "react-icons/fa";
+import {
+  FaChevronDown,
+  FaChevronUp,
+  FaAngleDoubleLeft,
+  FaAngleDoubleRight,
+  FaChevronLeft,
+  FaChevronRight,
+} from "react-icons/fa";
 
 export default function PromotionAppliedDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+
   const [orders, setOrders] = useState([]);
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const res = await axios.get(`${Constants.DOMAIN_API}/admin/promotions/applied/${id}`);
-        if (res.data?.success) {
-          setOrders(Array.isArray(res.data.orders) ? res.data.orders : []);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 5;
+  const [totalPages, setTotalPages] = useState(1);
+  const [serverPagination, setServerPagination] = useState(false);
+
+  const fetchOrders = async (page = 1) => {
+    try {
+      setLoading(true);
+      const res = await axios.get(
+        `${Constants.DOMAIN_API}/admin/promotions/applied/${id}`,
+        { params: { page, limit: pageSize } }
+      );
+
+      if (res.data?.success) {
+        const list = Array.isArray(res.data.orders) ? res.data.orders : [];
+        setOrders(list);
+
+        if (res.data?.pagination) {
+
+          setServerPagination(true);
+          setTotalPages(res.data.pagination.totalPages || 1);
         } else {
-          setOrders([]);
+
+          setServerPagination(false);
+          const pages = Math.max(1, Math.ceil(list.length / pageSize));
+          setTotalPages(pages);
         }
-      } catch (err) {
-        console.error(err);
-        alert("Không thể tải đơn hàng.");
-      } finally {
-        setLoading(false);
+      } else {
+        setOrders([]);
+        setServerPagination(false);
+        setTotalPages(1);
       }
-    };
-    fetchOrders();
-  }, [id]);
+    } catch (err) {
+      console.error(err);
+      alert("Không thể tải đơn hàng.");
+      setOrders([]);
+      setServerPagination(false);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders(currentPage);
+
+    setExpandedOrderId(null);
+  }, [id, currentPage]);
+
+  const displayedOrders = serverPagination
+    ? orders
+    : orders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages]);
 
   const toggleExpand = (orderId) => {
     setExpandedOrderId((prev) => (prev === orderId ? null : orderId));
@@ -70,175 +118,238 @@ export default function PromotionAppliedDetail() {
 
       {loading ? (
         <p className="text-gray-600">Đang tải...</p>
-      ) : orders.length === 0 ? (
+      ) : displayedOrders.length === 0 ? (
         <p className="text-gray-600">Không có đơn hàng nào áp dụng.</p>
       ) : (
-        <div className="space-y-5">
-          {orders.map((order) => {
-            const orderDetails = Array.isArray(order.orderDetails)
-              ? order.orderDetails
-              : [];
-            return (
-              <div key={order.id} className="bg-white border rounded-md shadow">
-
-                <button
-                  className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50"
-                  onClick={() => toggleExpand(order.id)}
-                >
-                  <div className="text-left">
-                    <div className="font-semibold">
-                      Mã đơn: <span className="font-bold">{order.order_code || "—"}</span>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      Khách: {order.user?.name || "—"} ({order.user?.email || "—"})
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      Trạng thái: <span className="font-medium">{translateStatus(order.status)}</span>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      Tổng tiền: <span className="font-medium">{formatCurrency(order.total_price)}</span>
-                    </div>
-                  </div>
-                  <div className="text-gray-600">
-                    {expandedOrderId === order.id ? <FaChevronUp /> : <FaChevronDown />}
-                  </div>
-                </button>
-
-                {expandedOrderId === order.id && (
-                  <div className="px-4 pb-4">
-                    <div className="bg-white shadow-sm rounded-md p-4 mb-4 border">
-                      <h4 className="text-lg font-semibold mb-3">Thông tin khách hàng</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                        <div>
-                          <span className="font-medium">Mã đơn:</span> {order.order_code || "—"}
-                        </div>
-                        <div>
-                          <span className="font-medium">Họ tên:</span> {order.user?.name || "—"}
-                        </div>
-                        <div>
-                          <span className="font-medium">Số điện thoại:</span> {order.user?.phone || "—"}
-                        </div>
-                        <div>
-                          <span className="font-medium">Email:</span> {order.user?.email || "—"}
-                        </div>
-                        <div className="md:col-span-2">
-                          <span className="font-medium">Địa chỉ:</span> {order.shipping_address || "—"}
-                        </div>
-                        <div>
-                          <span className="font-medium">Phương thức thanh toán:</span>{" "}
-                          {order.payment_method || "—"}
-                        </div>
-                        <div>
-                          <span className="font-medium">Ngày đặt hàng:</span>{" "}
-                          {order.created_at
-                            ? new Date(order.created_at).toLocaleDateString("vi-VN")
-                            : "—"}
-                        </div>
-                        <div className="md:col-span-2">
-                          <span className="font-medium">Ghi chú:</span> {order.note || "—"}
-                        </div>
+        <>
+          <div className="space-y-5">
+            {displayedOrders.map((order) => {
+              const orderDetails = Array.isArray(order.orderDetails) ? order.orderDetails : [];
+              return (
+                <div key={order.id} className="bg-white border rounded-md shadow">
+                  <button
+                    className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50"
+                    onClick={() => toggleExpand(order.id)}
+                  >
+                    <div className="text-left">
+                      <div className="font-semibold">
+                        Mã đơn: <span className="font-bold">{order.order_code || "—"}</span>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        Khách: {order.user?.name || "—"} ({order.user?.email || "—"})
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        Trạng thái:{" "}
+                        <span className="font-medium">{translateStatus(order.status)}</span>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        Tổng tiền:{" "}
+                        <span className="font-medium">{formatCurrency(order.total_price)}</span>
                       </div>
                     </div>
+                    <div className="text-gray-600">
+                      {expandedOrderId === order.id ? <FaChevronUp /> : <FaChevronDown />}
+                    </div>
+                  </button>
 
-                    <div className="bg-white shadow-sm rounded-md p-4 border">
-                      <h4 className="text-lg font-semibold mb-3">Sản phẩm</h4>
-                      <table className="w-full border-collapse border text-center">
-                        <thead>
-                          <tr className="bg-gray-200">
-                            <th className="border p-2">Trạng thái</th>
-                            <th className="border p-2">Tên sản phẩm</th>
-                            <th className="border p-2">Số lượng</th>
-                            <th className="border p-2">Đơn giá</th>
-                            <th className="border p-2">Thành tiền</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {orderDetails.length > 0 ? (
-                            <>
-                              {orderDetails.map((item, idx) => {
-                                const name = item?.variant?.product?.name || "Không có tên sản phẩm";
-                                const sku = item?.variant?.sku ? ` (${item.variant.sku})` : "";
-                                const quantity = Number(item?.quantity || 0);
-                                const price = Number(item?.price || 0);
-                                return (
-                                  <tr key={idx} className="border-b">
-                                    <td className="p-2">{translateStatus(order.status)}</td>
-                                    <td className="p-2">{name}{sku}</td>
-                                    <td className="p-2 text-center">{quantity}</td>
-                                    <td className="p-2 text-right">{formatCurrency(price)}</td>
-                                    <td className="p-2 text-right">{formatCurrency(quantity * price)}</td>
+                  {expandedOrderId === order.id && (
+                    <div className="px-4 pb-4">
+                      <div className="bg-white shadow-sm rounded-md p-4 mb-4 border">
+                        <h4 className="text-lg font-semibold mb-3">Thông tin khách hàng</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                          <div>
+                            <span className="font-medium">Mã đơn:</span> {order.order_code || "—"}
+                          </div>
+                          <div>
+                            <span className="font-medium">Họ tên:</span> {order.user?.name || "—"}
+                          </div>
+                          <div>
+                            <span className="font-medium">Số điện thoại:</span> {order.user?.phone || "—"}
+                          </div>
+                          <div>
+                            <span className="font-medium">Email:</span> {order.user?.email || "—"}
+                          </div>
+                          <div className="md:col-span-2">
+                            <span className="font-medium">Địa chỉ:</span> {order.shipping_address || "—"}
+                          </div>
+                          <div>
+                            <span className="font-medium">Phương thức thanh toán:</span>{" "}
+                            {order.payment_method || "—"}
+                          </div>
+                          <div>
+                            <span className="font-medium">Ngày đặt hàng:</span>{" "}
+                            {order.created_at
+                              ? new Date(order.created_at).toLocaleDateString("vi-VN")
+                              : "—"}
+                          </div>
+                          <div className="md:col-span-2">
+                            <span className="font-medium">Ghi chú:</span> {order.note || "—"}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white shadow-sm rounded-md p-4 border">
+                        <h4 className="text-lg font-semibold mb-3">Sản phẩm</h4>
+                        <table className="w-full border-collapse border text-center">
+                          <thead>
+                            <tr className="bg-gray-200">
+                              <th className="border p-2">Trạng thái</th>
+                              <th className="border p-2">Tên sản phẩm</th>
+                              <th className="border p-2">Số lượng</th>
+                              <th className="border p-2">Đơn giá</th>
+                              <th className="border p-2">Thành tiền</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {orderDetails.length > 0 ? (
+                              <>
+                                {orderDetails.map((item, idx) => {
+                                  const name = item?.variant?.product?.name || "Không có tên sản phẩm";
+                                  const sku = item?.variant?.sku ? ` (${item.variant.sku})` : "";
+                                  const quantity = Number(item?.quantity || 0);
+                                  const price = Number(item?.price || 0);
+                                  return (
+                                    <tr key={idx} className="border-b">
+                                      <td className="p-2">{translateStatus(order.status)}</td>
+                                      <td className="p-2">
+                                        {name}
+                                        {sku}
+                                      </td>
+                                      <td className="p-2 text-center">{quantity}</td>
+                                      <td className="p-2 text-right">{formatCurrency(price)}</td>
+                                      <td className="p-2 text-right">
+                                        {formatCurrency(quantity * price)}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+
+                                {Number(order?.shipping_fee) > 0 && (
+                                  <tr className="bg-gray-50">
+                                    <td colSpan={4} className="text-right font-medium p-2 border-t">
+                                      Phí vận chuyển:
+                                    </td>
+                                    <td className="text-right p-2 border-t font-medium">
+                                      +{formatCurrency(order.shipping_fee)}
+                                    </td>
                                   </tr>
-                                );
-                              })}
+                                )}
 
-                              {Number(order?.shipping_fee) > 0 && (
-                                <tr className="bg-gray-50">
-                                  <td colSpan={4} className="text-right font-medium p-2 border-t">
-                                    Phí vận chuyển:
+                                {Number(order?.discount_amount) > 0 && (
+                                  <tr className="bg-gray-50">
+                                    <td colSpan={4} className="text-right font-medium p-2 border-t">
+                                      Số tiền giảm giá:
+                                    </td>
+                                    <td className="text-right p-2 border-t text-red-600 font-medium">
+                                      -{formatCurrency(order.discount_amount)}
+                                    </td>
+                                  </tr>
+                                )}
+
+                                {Number(order?.special_discount_amount) > 0 && (
+                                  <tr className="bg-gray-50">
+                                    <td colSpan={4} className="text-right font-medium p-2 border-t">
+                                      Giảm giá đặc biệt:
+                                    </td>
+                                    <td className="text-right p-2 border-t text-red-600 font-medium">
+                                      -{formatCurrency(order.special_discount_amount)}
+                                    </td>
+                                  </tr>
+                                )}
+
+                                {Number(order?.wallet_balance) > 0 &&
+                                  order?.status !== "cancelled" && (
+                                    <tr className="bg-gray-50">
+                                      <td colSpan={4} className="text-right font-medium p-2 border-t">
+                                        Ví tiền:
+                                      </td>
+                                      <td className="text-right p-2 border-t text-red-600 font-medium">
+                                        -{formatCurrency(order.wallet_balance)}
+                                      </td>
+                                    </tr>
+                                  )}
+
+                                <tr className="bg-gray-100 font-semibold">
+                                  <td colSpan={4} className="text-right p-2 border-t border-b">
+                                    Tổng tiền:
                                   </td>
-                                  <td className="text-right p-2 border-t font-medium">
-                                    +{formatCurrency(order.shipping_fee)}
+                                  <td className="text-right p-2 border-t border-b text-blue-600">
+                                    {formatCurrency(order.total_price)}
                                   </td>
                                 </tr>
-                              )}
-
-                              {Number(order?.discount_amount) > 0 && (
-                                <tr className="bg-gray-50">
-                                  <td colSpan={4} className="text-right font-medium p-2 border-t">
-                                    Số tiền giảm giá:
-                                  </td>
-                                  <td className="text-right p-2 border-t text-red-600 font-medium">
-                                    -{formatCurrency(order.discount_amount)}
-                                  </td>
-                                </tr>
-                              )}
-
-                              {Number(order?.special_discount_amount) > 0 && (
-                                <tr className="bg-gray-50">
-                                  <td colSpan={4} className="text-right font-medium p-2 border-t">
-                                    Giảm giá đặc biệt:
-                                  </td>
-                                  <td className="text-right p-2 border-t text-red-600 font-medium">
-                                    -{formatCurrency(order.special_discount_amount)}
-                                  </td>
-                                </tr>
-                              )}
-
-                              {Number(order?.wallet_balance) > 0 && order?.status !== "cancelled" && (
-                                <tr className="bg-gray-50">
-                                  <td colSpan={4} className="text-right font-medium p-2 border-t">
-                                    Ví tiền:
-                                  </td>
-                                  <td className="text-right p-2 border-t text-red-600 font-medium">
-                                    -{formatCurrency(order.wallet_balance)}
-                                  </td>
-                                </tr>
-                              )}
-
-                              <tr className="bg-gray-100 font-semibold">
-                                <td colSpan={4} className="text-right p-2 border-t border-b">Tổng tiền:</td>
-                                <td className="text-right p-2 border-t border-b text-blue-600">
-                                  {formatCurrency(order.total_price)}
+                              </>
+                            ) : (
+                              <tr>
+                                <td colSpan={5} className="border p-2 text-center text-gray-500">
+                                  Không có sản phẩm nào
                                 </td>
                               </tr>
-                            </>
-                          ) : (
-                            <tr>
-                              <td colSpan={5} className="border p-2 text-center text-gray-500">
-                                Không có sản phẩm nào
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {totalPages > 0 && (
+            <div className="flex justify-center mt-6">
+              <div className="flex items-center space-x-1">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(1)}
+                  className="px-2 py-1 border rounded disabled:opacity-50"
+                >
+                  <FaAngleDoubleLeft />
+                </button>
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  className="px-2 py-1 border rounded disabled:opacity-50"
+                >
+                  <FaChevronLeft />
+                </button>
+
+                {[...Array(totalPages)].map((_, i) => {
+                  const page = i + 1;
+                  if (page >= currentPage - 1 && page <= currentPage + 1) {
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-1 border rounded ${page === currentPage
+                            ? "bg-blue-600 text-white"
+                            : "bg-white hover:bg-blue-100"
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  }
+                  return null;
+                })}
+
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  className="px-2 py-1 border rounded disabled:opacity-50"
+                >
+                  <FaChevronRight />
+                </button>
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(totalPages)}
+                  className="px-2 py-1 border rounded disabled:opacity-50"
+                >
+                  <FaAngleDoubleRight />
+                </button>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
